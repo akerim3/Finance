@@ -1,0 +1,3329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Company Finance Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+    .card { background-color: white; border-radius: 0.75rem; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); border: 1px solid #e2e8f0; }
+    .btn { transition: background-color 0.3s ease; }
+    .dynamic-field { display: none; }
+    .tab-btn.active { border-color: #4f46e5; color: #4f46e5; background-color: #eef2ff; }
+    .chev { font-size: 18px; line-height: 1; width: 18px; text-align: center; }
+    /* Custom styles for select dropdown arrows */
+    select {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+      background-position: right 0.5rem center;
+      background-repeat: no-repeat;
+      background-size: 1.5em 1.5em;
+      padding-right: 2.5rem;
+    }
+  </style>
+</head>
+<body class="text-gray-800">
+
+  <!-- Loading Spinner -->
+  <div id="loading-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+    <div class="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-indigo-500"></div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="notification-toast" class="fixed top-5 right-5 p-4 rounded-lg shadow-lg z-[100] hidden">
+    <p id="notification-text"></p>
+  </div>
+
+  <!-- Undo Toast -->
+  <div id="undo-toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-3 rounded-lg shadow-lg z-[150] hidden">
+    <span id="undo-text">Deleted.</span>
+    <button id="undo-btn" class="ml-3 underline">Undo</button>
+  </div>
+
+  <!-- Confirm Modal -->
+  <div id="confirm-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden z-[200] items-center justify-center p-4">
+    <div class="bg-white rounded-xl p-6 max-w-md w-full shadow-xl">
+      <h3 id="confirm-title" class="text-xl font-semibold mb-2">Confirm</h3>
+      <p id="confirm-message" class="text-gray-600 mb-4"></p>
+      <div id="confirm-extra" class="mb-4 hidden"></div>
+      <div id="confirm-buttons" class="flex justify-end gap-2"></div>
+    </div>
+  </div>
+
+  <!-- Login/Signup Overlay -->
+  <div id="auth-overlay" class="fixed inset-0 bg-gray-100 z-40 flex items-center justify-center hidden">
+    <div class="w-full max-w-md">
+      <div class="card p-8">
+        <div id="login-view">
+          <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">Login</h2>
+          <form id="login-form" class="space-y-4">
+            <input type="email" id="login-email" placeholder="Email" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500" required>
+            <input type="password" id="login-password" placeholder="Password" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500" required>
+            <button type="submit" class="btn w-full bg-indigo-600 text-white font-semibold py-3 px-4 rounded-md hover:bg-indigo-700">Login</button>
+          </form>
+          <p class="text-center text-sm text-gray-600 mt-4">
+            Don't have an account? <a href="#" id="show-signup" class="font-medium text-indigo-600 hover:underline">Sign up</a>
+          </p>
+        </div>
+        <div id="signup-view" class="hidden">
+          <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">Create Account</h2>
+          <form id="signup-form" class="space-y-4">
+            <input type="email" id="signup-email" placeholder="Email" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500" required>
+            <input type="password" id="signup-password" placeholder="Password" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500" required>
+            <button type="submit" class="btn w-full bg-indigo-600 text-white font-semibold py-3 px-4 rounded-md hover:bg-indigo-700">Sign Up</button>
+          </form>
+          <p class="text-center text-sm text-gray-600 mt-4">
+            Already have an account? <a href="#" id="show-login" class="font-medium text-indigo-600 hover:underline">Login</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="app-container" class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 hidden">
+    <header class="mb-8">
+      <div class="flex justify-between items-center flex-wrap gap-4">
+        <div>
+            <div class="flex items-center gap-3">
+                <div class="bg-indigo-100 text-indigo-600 p-2 rounded-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                </div>
+                <h1 class="text-3xl font-bold text-gray-900">Finance Dashboard</h1>
+                <span id="admin-badge" class="hidden px-3 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-sm font-bold rounded-full shadow-lg">✓ ADMIN</span>
+            </div>
+          <p class="text-gray-600 mt-2">Welcome back! Here's your complete financial overview.</p>
+          <div id="user-info" class="text-sm text-gray-500 mt-1"></div>
+          <button id="reclaim-admin-btn" class="hidden mt-2 text-xs bg-yellow-500 text-white font-semibold py-1 px-3 rounded-md hover:bg-yellow-600">⚠️ Reclaim Admin Access</button>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <div class="flex items-center gap-2">
+            <label for="historical-date-picker" class="text-sm font-medium text-gray-700">View as of:</label>
+            <input type="date" id="historical-date-picker" class="p-2 border border-gray-300 rounded-md">
+          </div>
+          <button id="expenses-analysis-btn" class="btn bg-white border border-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-md hover:bg-gray-50">Expenses</button>
+          <button id="income-analysis-btn" class="btn bg-white border border-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-md hover:bg-gray-50">Income</button>
+          <button id="export-btn" class="btn bg-white border border-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-md hover:bg-gray-50">Export</button>
+          <button id="transaction-history-btn" class="btn bg-white border border-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-md hover:bg-gray-50">History</button>
+          <button id="manage-categories-btn" class="btn bg-white border border-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-md hover:bg-gray-50">Manage</button>
+          <button id="logout-btn" class="btn bg-red-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-red-700">Logout</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Dashboard Metrics -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        <div class="card p-4"><div class="flex justify-between items-start"><div class="space-y-1"><h2 class="text-sm font-medium text-gray-500">TOTAL NET WORTH</h2><p id="total-balance" class="text-2xl font-bold text-indigo-600">$0.00</p><p class="text-xs text-gray-500">+0.0% from last month</p></div><div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg"><svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 3a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 12m15 0a2.25 2.25 0 012.25 2.25m0 0a2.25 2.25 0 01-2.25 2.25m-10.5 0a2.25 2.25 0 01-2.25-2.25m0 0a2.25 2.25 0 00-2.25-2.25m10.5 0a2.25 2.25 0 002.25 2.25" /></svg></div></div></div>
+        <div class="card p-4"><div class="flex justify-between items-start"><div class="space-y-1"><h2 class="text-sm font-medium text-gray-500">TOTAL ASSETS</h2><p id="total-assets" class="text-2xl font-bold text-green-600">$0.00</p><p class="text-xs text-gray-500">+0.0% from last month</p></div><div class="p-2 bg-green-100 text-green-600 rounded-lg"><svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-3.75-.625m3.75.625l-6.25 3.75" /></svg></div></div></div>
+        <div class="card p-4"><div class="flex justify-between items-start"><div class="space-y-1"><h2 class="text-sm font-medium text-gray-500">TOTAL LIABILITIES</h2><p id="total-liabilities" class="text-2xl font-bold text-red-600">$0.00</p><p class="text-xs text-gray-500">+0.0% from last month</p></div><div class="p-2 bg-red-100 text-red-600 rounded-lg"><svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6L9 12.75l4.286-4.286a11.948 11.948 0 014.306 6.43l.776 2.898m0 0l3.182-5.511m-3.182 5.51l-5.511-3.181" /></svg></div></div></div>
+        <div id="monthly-income-card" class="card p-4 cursor-pointer hover:shadow-lg transition-shadow"><div class="flex justify-between items-start"><div class="space-y-1"><h2 class="text-sm font-medium text-gray-500">MONTHLY INCOME</h2><p id="monthly-income" class="text-2xl font-bold text-blue-600">$0.00</p><p class="text-xs text-gray-500">Click to view details →</p></div><div class="p-2 bg-blue-100 text-blue-600 rounded-lg"><svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div></div></div>
+        <div id="monthly-expenses-card" class="card p-4 cursor-pointer hover:shadow-lg transition-shadow"><div class="flex justify-between items-start"><div class="space-y-1"><h2 class="text-sm font-medium text-gray-500">MONTHLY EXPENSES</h2><p id="monthly-expenses" class="text-2xl font-bold text-orange-600">$0.00</p><p class="text-xs text-gray-500">Click to view details →</p></div><div class="p-2 bg-orange-100 text-orange-600 rounded-lg"><svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c.51 0 .962-.343 1.087-.835l1.823-6.84a2.25 2.25 0 00-2.174-2.67H5.25M6 18a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm12 0a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" /></svg></div></div></div>
+    </section>
+
+    <main class="space-y-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Assets Column -->
+            <div class="card p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2"><svg class="w-6 h-6 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 3a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 12m15 0a2.25 2.25 0 012.25 2.25m0 0a2.25 2.25 0 01-2.25 2.25m-10.5 0a2.25 2.25 0 01-2.25-2.25m0 0a2.25 2.25 0 00-2.25-2.25m10.5 0a2.25 2.25 0 002.25 2.25" /></svg>Assets</h2>
+                    <button id="add-asset-btn" class="btn bg-green-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-600 flex items-center gap-1"><svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" /></svg>Add Asset</button>
+                </div>
+                <div id="assets-list" class="space-y-3 max-h-[60vh] overflow-y-auto pr-2"></div>
+            </div>
+
+            <!-- Liabilities Column -->
+            <div class="card p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2"><svg class="w-6 h-6 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 21z" /></svg>Liabilities</h2>
+                    <button id="add-liability-btn" class="btn bg-red-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-red-600 flex items-center gap-1"><svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" /></svg>Add Liability</button>
+                </div>
+                <div id="liabilities-list" class="space-y-3 max-h-[60vh] overflow-y-auto pr-2"></div>
+            </div>
+        </div>
+
+        <!-- Forms and Chart Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+            <div class="lg:col-span-2 card p-6">
+                <div class="border-b border-gray-200 mb-4">
+                    <nav class="-mb-px flex space-x-4" aria-label="Tabs">
+                    <button id="expense-tab-btn" class="tab-btn active whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm">Record Expense</button>
+                    <button id="income-tab-btn" class="tab-btn whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700">Record Income</button>
+                    <button id="transaction-tab-btn" class="tab-btn whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700">Record Transaction</button>
+                    </nav>
+                </div>
+
+                <!-- Expense Form -->
+                <div id="expense-form-container">
+                    <h2 class="text-xl font-bold text-gray-900">Record an Expense</h2>
+                    <form id="add-expense-form" class="space-y-4 mt-4">
+                    <input type="text" id="expense-description" placeholder="Expense Description" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500" required>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <input type="number" id="expense-amount" placeholder="Amount ($)" class="flex-grow p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500" step="0.01" required>
+                        <input type="date" id="expense-date" class="w-full sm:w-48 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500" required>
+                    </div>
+                    <div>
+                        <label for="expense-type-select" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                        <select id="expense-type-select" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 bg-white" required><option value="">Select category...</option></select>
+                    </div>
+                    <div>
+                        <label for="expense-source" class="block text-sm font-medium text-gray-700 mb-1">Paid From</label>
+                        <select id="expense-source" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 bg-white" required><option value="">Select funding source...</option></select>
+                    </div>
+                    <div id="expense-employee-field" class="dynamic-field">
+                        <label for="expense-employee-select" class="block text-sm font-medium text-gray-700 mb-1">Employee</label>
+                        <select id="expense-employee-select" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 bg-white" required><option value="">Select employee...</option></select>
+                    </div>
+                    <button type="submit" class="btn w-full bg-indigo-600 text-white font-semibold py-3 px-4 rounded-md hover:bg-indigo-700 mt-4">Add Expense</button>
+                    </form>
+                </div>
+
+                <!-- Income Form -->
+                <div id="income-form-container" class="hidden">
+                    <h2 class="text-xl font-bold text-gray-900">Record Income</h2>
+                    <form id="add-income-form" class="space-y-4 mt-4">
+                    <input type="text" id="income-description" placeholder="Income Description" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500" required>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <input type="number" id="income-amount" placeholder="Amount ($)" class="flex-grow p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500" step="0.01" required>
+                        <input type="date" id="income-date" class="w-full sm:w-48 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500" required>
+                    </div>
+                    <div>
+                        <label for="income-category-select" class="block text-sm font-medium text-gray-700 mb-1">Exchange (Income Source)</label>
+                        <select id="income-category-select" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 bg-white" required>
+                            <option value="">Select exchange...</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn w-full bg-green-600 text-white font-semibold py-3 px-4 rounded-md hover:bg-green-700 mt-4">Add Income</button>
+                    </form>
+                </div>
+
+                <!-- Transaction Form -->
+                <div id="transaction-form-container" class="hidden">
+                    <h2 class="text-xl font-bold text-gray-900">Record a Transaction</h2>
+                    <form id="add-transaction-form" class="space-y-4 mt-4">
+                    <select id="transaction-type" class="w-full p-3 border border-gray-300 rounded-md bg-white" required>
+                        <option value="" disabled selected>Select Transaction Type...</option>
+                        <option value="DEPOSIT">Deposit / Add Funds</option>
+                        <option value="WITHDRAWAL">Withdrawal / Remove Funds</option>
+                        <option value="TRANSFER">Internal Transfer</option>
+                    </select>
+                    <input type="text" id="transaction-description" placeholder="Description" class="w-full p-3 border border-gray-300 rounded-md" required>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <input type="number" id="transaction-amount" placeholder="Amount ($)" class="flex-grow p-3 border border-gray-300 rounded-md" step="0.01" required>
+                        <input type="date" id="transaction-date" class="w-full sm:w-48 p-3 border border-gray-300 rounded-md" required>
+                    </div>
+                    <div id="trans-from-account-field" class="dynamic-field">
+                        <label for="trans-from-account-select" class="block text-sm font-medium text-gray-700 mb-1">From Account</label>
+                        <select id="trans-from-account-select" class="w-full p-3 border border-gray-300 rounded-md bg-white" required></select>
+                    </div>
+                    <div id="trans-to-account-field" class="dynamic-field">
+                        <label for="trans-to-account-select" class="block text-sm font-medium text-gray-700 mb-1">To Account</label>
+                        <select id="trans-to-account-select" class="w-full p-3 border border-gray-300 rounded-md bg-white" required></select>
+                    </div>
+                    <div id="trans-single-account-field" class="dynamic-field">
+                        <label for="trans-single-account-select" class="block text-sm font-medium text-gray-700 mb-1">Account</label>
+                        <select id="trans-single-account-select" class="w-full p-3 border border-gray-300 rounded-md bg-white" required></select>
+                    </div>
+                    <button type="submit" class="btn w-full bg-green-600 text-white font-semibold py-3 px-4 rounded-md hover:bg-green-700 mt-4">Add Transaction</button>
+                    </form>
+                </div>
+            </div>
+            <div class="lg:col-span-3 card p-6">
+                <h2 class="text-xl font-bold text-gray-900 mb-4">Monthly Expense Chart</h2>
+                <div><canvas id="expenseChart"></canvas></div>
+            </div>
+        </div>
+    </main>
+  </div>
+
+  <!-- Modals -->
+  <div id="category-management-overlay" class="fixed inset-0 bg-gray-100 p-4 sm:p-6 lg:p-8 hidden z-50 overflow-y-auto">
+    <div class="max-w-4xl mx-auto">
+      <header class="mb-8 flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-900">Manage Lists & Accounts</h1>
+        <button id="close-category-modal-btn" class="text-gray-500 hover:text-gray-800 font-bold text-2xl">&times;</button>
+      </header>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+        <div class="md:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div class="card space-y-6 p-6">
+            <h2 class="text-xl font-bold text-gray-900">Add New Asset</h2>
+
+            <div class="border-t pt-6 space-y-4">
+              <h3 class="text-lg font-semibold text-gray-800">Exchange Balance</h3>
+              <form id="add-balance-form" class="flex flex-col sm:flex-row gap-4">
+                <select id="balance-name-select" class="flex-grow p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 bg-white" required>
+                  <option value="" disabled selected>Select Exchange</option>
+                </select>
+                <input type="number" id="balance-amount" placeholder="Initial Amount ($)" class="w-full sm:w-40 p-3 border border-gray-300 rounded-md" step="0.01" required>
+                <button type="submit" class="btn bg-blue-600 text-white font-semibold py-3 px-4 rounded-md hover:bg-blue-700">Add</button>
+              </form>
+            </div>
+
+            <div class="border-t pt-6 space-y-4">
+              <h3 class="text-lg font-semibold text-gray-800">Other Asset</h3>
+              <form id="add-asset-form" class="space-y-4">
+                <div class="flex flex-col sm:flex-row gap-4">
+                  <select id="asset-type" class="flex-grow p-3 border border-gray-300 rounded-md bg-white" required>
+                    <option value="" disabled selected>Select Asset Type</option>
+                    <option value="Cash">Cash Balance</option>
+                    <option value="Bank">Bank Balance</option>
+                    <option value="Broker">Broker Balance</option>
+                    <option value="Advance">Advance to Employee</option>
+                  </select>
+                  <input type="number" id="asset-amount" placeholder="Initial Amount ($)" class="w-full sm:w-40 p-3 border border-gray-300 rounded-md" step="0.01" required>
+                </div>
+
+                <div id="asset-bank-field" class="dynamic-field">
+                  <select id="asset-bank-select" class="w-full p-3 border border-gray-300 rounded-md bg-white" required>
+                    <option value="">Select Bank...</option>
+                  </select>
+                </div>
+
+                <div id="asset-broker-field" class="dynamic-field">
+                  <select id="asset-broker-select" class="w-full p-3 border border-gray-300 rounded-md bg-white" required>
+                    <option value="">Select Broker...</option>
+                  </select>
+                </div>
+
+                <div id="asset-employee-field" class="dynamic-field">
+                  <select id="asset-employee-select" class="w-full p-3 border border-gray-300 rounded-md bg-white" required>
+                    <option value="">Select Employee...</option>
+                  </select>
+                </div>
+
+                <button type="submit" class="btn w-full bg-green-600 text-white font-semibold py-3 px-4 rounded-md hover:bg-green-700">Add Asset</button>
+              </form>
+            </div>
+          </div>
+
+          <div class="card space-y-6 p-6">
+            <h2 class="text-xl font-bold text-gray-900">Add New Liability</h2>
+            <form id="add-liability-form" class="space-y-4">
+              <div class="flex flex-col sm:flex-row gap-4">
+                <select id="liability-type" class="flex-grow p-3 border border-gray-300 rounded-md bg-white" required>
+                  <option value="" disabled selected>Select Liability Type</option>
+                  <option value="Credit">Bank Credit</option>
+                  <option value="FounderCredit">Credit from Founder</option>
+                  <option value="Payable">Payable to Employee</option>
+                </select>
+                <input type="number" id="liability-amount" placeholder="Initial Amount ($)" class="w-full sm:w-40 p-3 border border-gray-300 rounded-md" step="0.01" required>
+              </div>
+
+              <div id="liability-employee-field" class="dynamic-field">
+                <select id="liability-employee-select" class="w-full p-3 border border-gray-300 rounded-md bg-white" required>
+                  <option value="">Select Employee...</option>
+                </select>
+              </div>
+
+              <div id="liability-founder-field" class="dynamic-field">
+                <select id="liability-founder-select" class="w-full p-3 border border-gray-300 rounded-md bg-white" required>
+                  <option value="">Select Founder...</option>
+                </select>
+              </div>
+
+              <div id="liability-credit-field" class="dynamic-field">
+                <input type="text" id="liability-credit-description" placeholder="Credit Description" class="w-full p-3 border border-gray-300 rounded-md">
+              </div>
+
+              <button type="submit" class="btn w-full bg-red-600 text-white font-semibold py-3 px-4 rounded-md hover:bg-red-700">Add Liability</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Manage Lists -->
+        <div class="card space-y-6 p-6">
+          <h2 class="text-xl font-bold text-gray-900">Employees</h2>
+          <form id="add-employee-form" class="flex gap-4">
+            <input type="text" id="new-employee-name" placeholder="New Employee Name" class="flex-grow p-2 border rounded-md" required>
+            <button type="submit" class="btn bg-purple-600 text-white font-semibold px-4 rounded-md">Add</button>
+          </form>
+          <div id="employees-list" class="space-y-3 max-h-48 overflow-y-auto pr-2"></div>
+        </div>
+
+        <div class="card space-y-6 p-6">
+          <h2 class="text-xl font-bold text-gray-900">Founders</h2>
+          <form id="add-founder-form" class="flex gap-4">
+            <input type="text" id="new-founder-name" placeholder="New Founder" class="flex-grow p-2 border rounded-md" required>
+            <button type="submit" class="btn bg-teal-600 text-white font-semibold px-4 rounded-md">Add</button>
+          </form>
+          <div id="founders-list" class="space-y-3 max-h-48 overflow-y-auto pr-2"></div>
+        </div>
+
+        <div class="card space-y-6 p-6">
+          <h2 class="text-xl font-bold text-gray-900">Exchanges</h2>
+          <form id="add-exchange-form" class="flex gap-4">
+            <input type="text" id="new-exchange-name" placeholder="New Exchange" class="flex-grow p-2 border rounded-md" required>
+            <button type="submit" class="btn bg-teal-600 text-white font-semibold px-4 rounded-md">Add</button>
+          </form>
+          <div id="exchanges-list" class="space-y-3 max-h-48 overflow-y-auto pr-2"></div>
+        </div>
+
+        <div class="card space-y-6 p-6">
+          <h2 class="text-xl font-bold text-gray-900">Banks</h2>
+          <form id="add-bank-form" class="flex gap-4">
+            <input type="text" id="new-bank-name" placeholder="New Bank" class="flex-grow p-2 border rounded-md" required>
+            <button type="submit" class="btn bg-teal-600 text-white font-semibold px-4 rounded-md">Add</button>
+          </form>
+          <div id="banks-list" class="space-y-3 max-h-48 overflow-y-auto pr-2"></div>
+        </div>
+
+        <div class="card space-y-6 p-6">
+          <h2 class="text-xl font-bold text-gray-900">Brokers</h2>
+          <form id="add-broker-form" class="flex gap-4">
+            <input type="text" id="new-broker-name" placeholder="New Broker" class="flex-grow p-2 border rounded-md" required>
+            <button type="submit" class="btn bg-teal-600 text-white font-semibold px-4 rounded-md">Add</button>
+          </form>
+          <div id="brokers-list" class="space-y-3 max-h-48 overflow-y-auto pr-2"></div>
+        </div>
+
+        <div class="card space-y-6 p-6">
+          <h2 class="text-xl font-bold text-gray-900">Expense Types</h2>
+          <form id="add-expense-type-form" class="flex gap-4">
+            <input type="text" id="new-expense-type-name" placeholder="New Expense Type" class="flex-grow p-2 border rounded-md" required>
+            <button type="submit" class="btn bg-teal-600 text-white font-semibold px-4 rounded-md">Add</button>
+          </form>
+          <div id="expense-types-list" class="space-y-3 max-h-48 overflow-y-auto pr-2"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div id="transaction-history-overlay" class="fixed inset-0 bg-gray-100 p-4 sm:p-6 lg:p-8 hidden z-50 overflow-y-auto">
+    <div class="max-w-4xl mx-auto">
+      <header class="mb-8 flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-900">Transaction History</h1>
+        <button id="close-transaction-modal-btn" class="text-gray-500 hover:text-gray-800 font-bold text-2xl">&times;</button>
+      </header>
+      <div class="card p-6 space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label for="filter-start-date" class="block text-sm font-medium text-gray-700">Start Date</label>
+                <input type="date" id="filter-start-date" class="mt-1 w-full p-2 border border-gray-300 rounded-md">
+            </div>
+            <div>
+                <label for="filter-end-date" class="block text-sm font-medium text-gray-700">End Date</label>
+                <input type="date" id="filter-end-date" class="mt-1 w-full p-2 border border-gray-300 rounded-md">
+            </div>
+            <div>
+                <label for="filter-account" class="block text-sm font-medium text-gray-700">Account</label>
+                <select id="filter-account" class="mt-1 w-full p-2 border border-gray-300 rounded-md bg-white">
+                    <option value="">All Accounts</option>
+                </select>
+            </div>
+            <div>
+                <label for="filter-description" class="block text-sm font-medium text-gray-700">Description</label>
+                <input type="text" id="filter-description" placeholder="Search..." class="mt-1 w-full p-2 border border-gray-300 rounded-md">
+            </div>
+        </div>
+        <div id="transaction-history-list" class="space-y-3 max-h-[70vh] overflow-y-auto pr-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export Modal -->
+  <div id="export-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl p-6 max-w-md w-full shadow-xl">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-2xl font-bold text-gray-900">Export Data</h2>
+        <button id="close-export-modal" class="text-gray-500 hover:text-gray-800 font-bold text-2xl">&times;</button>
+      </div>
+      <div class="space-y-4">
+        <button id="export-csv-btn" class="w-full btn bg-blue-600 text-white font-semibold py-3 px-4 rounded-md hover:bg-blue-700">
+          Export Transactions to CSV
+        </button>
+        <button id="export-report-btn" class="w-full btn bg-green-600 text-white font-semibold py-3 px-4 rounded-md hover:bg-green-700">
+          Generate Financial Report (PDF)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Expenses Analysis Modal -->
+  <div id="expenses-analysis-overlay" class="fixed inset-0 bg-gray-100 p-4 sm:p-6 lg:p-8 hidden z-50 overflow-y-auto">
+    <div class="max-w-6xl mx-auto">
+      <header class="mb-8 flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-900">Expense Analysis</h1>
+        <button id="close-expenses-analysis-modal" class="text-gray-500 hover:text-gray-800 font-bold text-2xl">&times;</button>
+      </header>
+      
+      <div class="card p-6 mb-6">
+        <h2 class="text-lg font-bold text-gray-900 mb-4">Filter Expenses</h2>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label for="expense-filter-start-date" class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+            <input type="date" id="expense-filter-start-date" class="w-full p-2 border border-gray-300 rounded-md">
+          </div>
+          <div>
+            <label for="expense-filter-end-date" class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+            <input type="date" id="expense-filter-end-date" class="w-full p-2 border border-gray-300 rounded-md">
+          </div>
+          <div>
+            <label for="expense-filter-category" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+            <select id="expense-filter-category" class="w-full p-2 border border-gray-300 rounded-md bg-white">
+              <option value="">All Categories</option>
+            </select>
+          </div>
+          <div class="flex items-end">
+            <button id="expense-filter-reset" class="w-full btn bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-md hover:bg-gray-300">Reset Filters</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div class="card p-6">
+          <h3 class="text-sm font-medium text-gray-500 mb-2">TOTAL EXPENSES</h3>
+          <p id="expenses-total" class="text-3xl font-bold text-orange-600">$0.00</p>
+          <p id="expenses-count" class="text-sm text-gray-500 mt-1">0 transactions</p>
+        </div>
+        <div class="card p-6">
+          <h3 class="text-sm font-medium text-gray-500 mb-2">AVERAGE EXPENSE</h3>
+          <p id="expenses-average" class="text-3xl font-bold text-gray-700">$0.00</p>
+          <p class="text-sm text-gray-500 mt-1">per transaction</p>
+        </div>
+        <div class="card p-6">
+          <h3 class="text-sm font-medium text-gray-500 mb-2">TOP CATEGORY</h3>
+          <p id="expenses-top-category" class="text-xl font-bold text-gray-700">-</p>
+          <p id="expenses-top-amount" class="text-sm text-gray-500 mt-1">$0.00</p>
+        </div>
+      </div>
+
+      <div class="card p-6">
+        <h2 class="text-xl font-bold text-gray-900 mb-4">Expenses by Category</h2>
+        <div id="expenses-by-category-list" class="space-y-3"></div>
+      </div>
+      
+      <div id="expense-transactions-section" class="card p-6 mt-6 hidden">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold text-gray-900">Transactions: <span id="expense-category-name"></span></h2>
+          <button id="close-expense-transactions" class="text-gray-500 hover:text-gray-800 font-bold text-xl">&times;</button>
+        </div>
+        <div id="expense-transactions-list" class="space-y-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Income Analysis Modal -->
+  <div id="income-analysis-overlay" class="fixed inset-0 bg-gray-100 p-4 sm:p-6 lg:p-8 hidden z-50 overflow-y-auto">
+    <div class="max-w-6xl mx-auto">
+      <header class="mb-8 flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-900">Income Analysis</h1>
+        <button id="close-income-analysis-modal" class="text-gray-500 hover:text-gray-800 font-bold text-2xl">&times;</button>
+      </header>
+      
+      <div class="card p-6 mb-6">
+        <h2 class="text-lg font-bold text-gray-900 mb-4">Filter Income</h2>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label for="income-filter-start-date" class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+            <input type="date" id="income-filter-start-date" class="w-full p-2 border border-gray-300 rounded-md">
+          </div>
+          <div>
+            <label for="income-filter-end-date" class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+            <input type="date" id="income-filter-end-date" class="w-full p-2 border border-gray-300 rounded-md">
+          </div>
+          <div>
+            <label for="income-filter-category" class="block text-sm font-medium text-gray-700 mb-1">Exchange</label>
+            <select id="income-filter-category" class="w-full p-2 border border-gray-300 rounded-md bg-white">
+              <option value="">All Exchanges</option>
+            </select>
+          </div>
+          <div class="flex items-end">
+            <button id="income-filter-reset" class="w-full btn bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-md hover:bg-gray-300">Reset Filters</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div class="card p-6">
+          <h3 class="text-sm font-medium text-gray-500 mb-2">TOTAL INCOME</h3>
+          <p id="income-total" class="text-3xl font-bold text-green-600">$0.00</p>
+          <p id="income-count" class="text-sm text-gray-500 mt-1">0 transactions</p>
+        </div>
+        <div class="card p-6">
+          <h3 class="text-sm font-medium text-gray-500 mb-2">AVERAGE INCOME</h3>
+          <p id="income-average" class="text-3xl font-bold text-gray-700">$0.00</p>
+          <p class="text-sm text-gray-500 mt-1">per transaction</p>
+        </div>
+        <div class="card p-6">
+          <h3 class="text-sm font-medium text-gray-500 mb-2">TOP CATEGORY</h3>
+          <p id="income-top-category" class="text-xl font-bold text-gray-700">-</p>
+          <p id="income-top-amount" class="text-sm text-gray-500 mt-1">$0.00</p>
+        </div>
+      </div>
+
+      <div class="card p-6">
+        <h2 class="text-xl font-bold text-gray-900 mb-4">Income by Category</h2>
+        <div id="income-by-category-list" class="space-y-3"></div>
+      </div>
+      
+      <div id="income-transactions-section" class="card p-6 mt-6 hidden">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold text-gray-900">Transactions: <span id="income-category-name"></span></h2>
+          <button id="close-income-transactions" class="text-gray-500 hover:text-gray-800 font-bold text-xl">&times;</button>
+        </div>
+        <div id="income-transactions-list" class="space-y-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Transaction Modal -->
+  <div id="edit-transaction-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl p-6 max-w-md w-full shadow-xl">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-2xl font-bold text-gray-900">Edit Transaction</h2>
+        <button id="close-edit-transaction-modal" class="text-gray-500 hover:text-gray-800 font-bold text-2xl">&times;</button>
+      </div>
+      <form id="edit-transaction-form" class="space-y-4">
+        <input type="hidden" id="edit-transaction-id">
+        <div>
+          <label for="edit-description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <input type="text" id="edit-description" class="w-full p-3 border border-gray-300 rounded-md" required>
+        </div>
+        <div>
+          <label for="edit-amount" class="block text-sm font-medium text-gray-700 mb-1">Amount ($)</label>
+          <input type="number" id="edit-amount" step="0.01" class="w-full p-3 border border-gray-300 rounded-md" required>
+        </div>
+        <div>
+          <label for="edit-date" class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+          <input type="date" id="edit-date" class="w-full p-3 border border-gray-300 rounded-md" required>
+        </div>
+        <div class="flex gap-2 justify-end">
+          <button type="button" id="cancel-edit-btn" class="btn bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-md hover:bg-gray-300">Cancel</button>
+          <button type="submit" class="btn bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- User Management Modal -->
+  <div id="user-management-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden z-50 overflow-y-auto">
+    <div class="min-h-screen px-4 py-8">
+      <div class="bg-white rounded-xl p-8 max-w-4xl mx-auto shadow-xl">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-3xl font-bold text-gray-900">User Management</h2>
+          <button id="close-user-management" class="text-gray-500 hover:text-gray-800 font-bold text-2xl">&times;</button>
+        </div>
+        
+        <div class="mb-8">
+          <h3 class="text-xl font-bold text-gray-900 mb-4">Create New User</h3>
+          <form id="create-user-form" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label for="new-user-email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input type="email" id="new-user-email" class="w-full p-3 border border-gray-300 rounded-md" required>
+              </div>
+              <div>
+                <label for="new-user-password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input type="password" id="new-user-password" class="w-full p-3 border border-gray-300 rounded-md" required minlength="6">
+              </div>
+            </div>
+            <button type="submit" class="btn bg-purple-600 text-white font-semibold py-2 px-6 rounded-md hover:bg-purple-700">Create User</button>
+          </form>
+        </div>
+        
+        <div>
+          <h3 class="text-xl font-bold text-gray-900 mb-4">Existing Users</h3>
+          <div id="users-list" class="space-y-3"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, collection, onSnapshot, addDoc, deleteDoc, runTransaction, setLogLevel, query, where, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD1EExF897GeMkFczqRreOVn-bygEkzKnk",
+      authDomain: "finance-4955c.firebaseapp.com",
+      projectId: "finance-4955c",
+      storageBucket: "finance-4955c.appspot.com",
+      messagingSenderId: "889140217524",
+      appId: "1:889140217524:web:c436b97e49b3c5222479e1"
+    };
+    const appId = 'finance-dashboard-app';
+    const SKIP_ANON_KEY = 'skipAnonAfterLogout'; // <-- added
+
+    let app, auth, db, userId, userRole = 'user';
+    let accountsCollection, transactionsCollection, employeesCollection, exchangesCollection, banksCollection, brokersCollection, foundersCollection, expenseTypesCollection, rolesCollection;
+    let unsubscribes = [];
+    let allData = { accounts: undefined, transactions: undefined, employees: undefined, exchanges: undefined, banks: undefined, brokers: undefined, founders: undefined, expenseTypes: undefined };
+
+    let ui;
+    let expenseChart = null;
+
+    // Undo state
+    let undoState = { timerId: null, items: [] };
+
+    // Expand/collapse memory for groups
+    const expandState = { assets: {}, liabilities: {} };
+
+    function showNotification(message, isError = true) {
+      const toast = document.getElementById('notification-toast');
+      const text = document.getElementById('notification-text');
+      toast?.classList.remove('bg-red-500', 'bg-green-500');
+      toast?.classList.add(isError ? 'bg-red-500' : 'bg-green-500');
+      toast?.classList.add('text-white');
+      if (text) text.textContent = message;
+      toast?.classList.remove('hidden');
+      setTimeout(() => toast?.classList.add('hidden'), 3000);
+    }
+
+    function showUndo(items, label = 'Deleted') {
+      undoState.items = items;
+      const toast = document.getElementById('undo-toast');
+      const txt = document.getElementById('undo-text');
+      const btn = document.getElementById('undo-btn');
+      if (txt) txt.textContent = `${label}.`;
+      toast?.classList.remove('hidden');
+
+      if (undoState.timerId) clearTimeout(undoState.timerId);
+      undoState.timerId = setTimeout(() => {
+        toast?.classList.add('hidden');
+        undoState.items = [];
+        undoState.timerId = null;
+      }, 10000);
+
+      btn.onclick = async () => {
+        try {
+          await restoreDeleted(undoState.items);
+          showNotification('Restored.', false);
+        } catch (e) {
+          console.error('Undo failed:', e);
+          showNotification('Undo failed.');
+        } finally {
+          toast?.classList.add('hidden');
+          if (undoState.timerId) clearTimeout(undoState.timerId);
+          undoState.items = [];
+          undoState.timerId = null;
+        }
+      };
+    }
+
+    async function restoreDeleted(items) {
+      if (!items || items.length === 0) return;
+      const batch = writeBatch(db);
+      const accs = items.filter(i => i.kind === 'account');
+      const txns = items.filter(i => i.kind === 'transaction');
+
+      accs.forEach(i => {
+        const ref = doc(db, `artifacts/${appId}/users/${userId}/accounts`, i.id);
+        batch.set(ref, i.data);
+      });
+      txns.forEach(i => {
+        const ref = doc(db, `artifacts/${appId}/users/${userId}/transactions`, i.id);
+        batch.set(ref, i.data);
+      });
+      await batch.commit();
+    }
+
+    function formatNumber(num) {
+      if (typeof num !== 'number' || Number.isNaN(num)) return '0.00';
+      return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // ---------- Confirm modal helper ----------
+    function openConfirm({ title = 'Confirm', message = '', buttons = [], extraHtml = '' }) {
+      return new Promise(resolve => {
+        const modal = document.getElementById('confirm-modal');
+        const t = document.getElementById('confirm-title');
+        const m = document.getElementById('confirm-message');
+        const b = document.getElementById('confirm-buttons');
+        const extra = document.getElementById('confirm-extra');
+
+        t.textContent = title;
+        m.textContent = message;
+
+        extra.innerHTML = extraHtml || '';
+        extra.classList.toggle('hidden', !extraHtml);
+
+        b.innerHTML = '';
+        buttons.forEach(btn => {
+          const el = document.createElement('button');
+          el.textContent = btn.label;
+          el.className = btn.className || 'px-4 py-2 rounded-md bg-gray-200';
+          el.addEventListener('click', () => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            resolve(btn.value);
+          });
+          b.appendChild(el);
+        });
+
+        modal.onclick = (e) => {
+          if (e.target === modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            resolve(null);
+          }
+        };
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      });
+    }
+    // ------------------------------------------
+
+    // ---------- Shared helpers (tabs + transaction fields) ----------
+    function accountDisplayName(a) {
+      switch (a?.subType) {
+        case 'Exchange':      return `Exchange: ${a.name}`;
+        case 'Bank':          return `Bank: ${a.name}`;
+        case 'Broker':        return `Broker: ${a.name}`;
+        case 'Cash':          return 'Cash on Hand';
+        case 'Advance':       return `Advance to: ${a.employeeName}`;
+        case 'Payable':       return `Payable to: ${a.employeeName}`;
+        case 'FounderCredit': return `Credit from: ${a.founderName}`;
+        case 'Credit':        return `Credit: ${a.name}`;
+        default:              return a?.name || 'Unnamed Account';
+      }
+    }
+
+    function populateAccountSelect(sel, includeAllOption = false) {
+        if (!sel) return;
+        const accs = allData.accounts || [];
+        const currentValue = sel.value;
+        
+        const sortedAccs = [...accs].sort((a, b) => {
+            const nameA = accountDisplayName(a).toLowerCase();
+            const nameB = accountDisplayName(b).toLowerCase();
+            return nameA.localeCompare(nameB);
+        });
+
+        sel.innerHTML = '';
+        if (includeAllOption) {
+            const allOpt = document.createElement('option');
+            allOpt.value = '';
+            allOpt.textContent = 'All Accounts';
+            sel.appendChild(allOpt);
+        } else {
+             const placeholder = document.createElement('option');
+             placeholder.value = "";
+             placeholder.textContent = "Select...";
+             sel.appendChild(placeholder);
+        }
+
+        sortedAccs.forEach(a => {
+            const opt = document.createElement('option');
+            opt.value = a.id;
+            opt.textContent = accountDisplayName(a);
+            sel.appendChild(opt);
+        });
+        sel.value = currentValue;
+    }
+
+    function showElement(el, show) {
+      if (!el) return;
+      el.classList.toggle('hidden', !show);
+      el.style.display = show ? 'block' : 'none';
+    }
+
+    function showField(containerEl, selectEl, show) {
+      if (!containerEl) return;
+      containerEl.style.display = show ? 'block' : 'none';
+      if (selectEl) {
+        selectEl.disabled = !show;
+        selectEl.required = !!show;
+      }
+    }
+
+    function setActiveTab(which) {
+      const isExpense = which === 'expense';
+      const isIncome = which === 'income';
+      const isTransaction = which === 'transaction';
+      
+      ui.buttons.expenseTab?.classList.toggle('active', isExpense);
+      ui.buttons.incomeTab?.classList.toggle('active', isIncome);
+      ui.buttons.transactionTab?.classList.toggle('active', isTransaction);
+      
+      showElement(ui.containers.expenseForm, isExpense);
+      showElement(ui.containers.incomeForm, isIncome);
+      showElement(ui.containers.transactionForm, isTransaction);
+    }
+
+    function toggleTransFields(mode) {
+      if (!ui.transaction) return;
+      if (mode === 'TRANSFER') {
+        showField(ui.transaction.fromField,   ui.transaction.fromSelect,   true);
+        showField(ui.transaction.toField,     ui.transaction.toSelect,     true);
+        showField(ui.transaction.singleField, ui.transaction.singleSelect, false);
+      } else if (mode === 'DEPOSIT' || mode === 'WITHDRAWAL') {
+        showField(ui.transaction.fromField,   ui.transaction.fromSelect,   false);
+        showField(ui.transaction.toField,     ui.transaction.toSelect,     false);
+        showField(ui.transaction.singleField, ui.transaction.singleSelect, true);
+      } else {
+        showField(ui.transaction.fromField,   ui.transaction.fromSelect,   false);
+        showField(ui.transaction.toField,     ui.transaction.toSelect,     false);
+        showField(ui.transaction.singleField, ui.transaction.singleSelect, false);
+      }
+    }
+    // ---------------------------------------------------------------
+
+    async function checkUserRole() {
+      try {
+        console.log('=== Checking user role ===');
+        console.log('User ID:', userId);
+        console.log('User Email:', auth.currentUser?.email);
+        
+        const roleDoc = await getDocs(query(rolesCollection, where("userId", "==", userId)));
+        console.log('Role docs found:', roleDoc.size);
+        
+        if (!roleDoc.empty) {
+          userRole = roleDoc.docs[0].data().role || 'user';
+          console.log('Existing role found:', userRole);
+        } else {
+          console.log('No role found for this user, checking if admin exists...');
+          // Check if there are any admin users
+          const allRoles = await getDocs(rolesCollection);
+          console.log('Total roles in collection:', allRoles.size);
+          
+          // Check if this user has any accounts/transactions (legacy admin check)
+          const userAccountsSnapshot = await getDocs(accountsCollection);
+          const userTransactionsSnapshot = await getDocs(transactionsCollection);
+          const hasData = userAccountsSnapshot.size > 0 || userTransactionsSnapshot.size > 0;
+          console.log('User has existing data?', hasData, '(Accounts:', userAccountsSnapshot.size, 'Transactions:', userTransactionsSnapshot.size, ')');
+          
+          const hasAdmin = allRoles.docs.some(doc => doc.data().role === 'admin');
+          console.log('Has admin?', hasAdmin);
+          
+          if (!hasAdmin || (hasData && allRoles.size === 0)) {
+            // First user, no admin exists, OR user has data but no roles exist (legacy admin)
+            userRole = 'admin';
+            // Use auth.uid as document ID for security rules to work
+            await setDoc(doc(rolesCollection, userId), { 
+              userId, 
+              role: 'admin', 
+              email: auth.currentUser?.email || '', 
+              createdAt: new Date().toISOString(),
+              legacyUpgrade: hasData && allRoles.size === 0
+            });
+            console.log('✅ Created admin role for user (legacy upgrade:', hasData && allRoles.size === 0, ')');
+          } else {
+            // There's already an admin, this is a new regular user
+            userRole = 'user';
+            // Use auth.uid as document ID for security rules to work
+            await setDoc(doc(rolesCollection, userId), { 
+              userId, 
+              role: 'user', 
+              email: auth.currentUser?.email || '', 
+              createdAt: new Date().toISOString() 
+            });
+            console.log('⚠️ Admin exists, assigning user role');
+          }
+        }
+        console.log('=== Final user role:', userRole, '===');
+        applyRoleBasedUI();
+      } catch (error) {
+        console.error('❌ Error checking user role:', error);
+        userRole = 'admin'; // Default to admin if error to prevent lockout
+        applyRoleBasedUI();
+      }
+    }
+    
+    function applyRoleBasedUI() {
+      console.log('=== Applying role-based UI for role:', userRole, '===');
+      
+      if (userRole === 'user') {
+        console.log('Applying USER restrictions...');
+        // Hide sections for regular users
+        document.querySelector('section.grid')?.querySelectorAll('.card').forEach((card, index) => {
+          // Hide Net Worth, Total Assets, Total Liabilities cards (keep only Income and Expenses)
+          if (index < 3) card.style.display = 'none';
+        });
+        
+        // Hide Assets and Liabilities sections
+        document.querySelectorAll('main > .grid')[0]?.style.setProperty('display', 'none');
+        
+        // Hide Transaction tab
+        document.getElementById('transaction-tab-btn')?.style.setProperty('display', 'none');
+        
+        // Hide Manage and Export buttons (but keep History)
+        document.getElementById('manage-categories-btn')?.style.setProperty('display', 'none');
+        document.getElementById('export-btn')?.style.setProperty('display', 'none');
+        
+        // Show reclaim admin button if user has data (likely a legacy admin)
+        const hasData = (allData.accounts && allData.accounts.length > 0) || 
+                       (allData.transactions && allData.transactions.length > 0);
+        if (hasData) {
+          console.log('User has data - showing reclaim admin button');
+          document.getElementById('reclaim-admin-btn')?.classList.remove('hidden');
+        }
+        
+        // Show only exchanges in a simplified view
+        createExchangeOnlyView();
+      } else {
+        console.log('Applying ADMIN permissions...');
+        
+        // Show admin badge
+        document.getElementById('admin-badge')?.classList.remove('hidden');
+        
+        // Admin - show manage users button
+        const manageBtn = document.getElementById('manage-categories-btn');
+        if (manageBtn && !document.getElementById('manage-users-btn')) {
+          const manageUsersBtn = document.createElement('button');
+          manageUsersBtn.id = 'manage-users-btn';
+          manageUsersBtn.className = 'btn bg-purple-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-purple-700 flex items-center gap-2';
+          manageUsersBtn.innerHTML = '<svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>Manage Users';
+          manageBtn.parentElement.appendChild(manageUsersBtn);
+          
+          // Add event listener immediately after creating the button
+          manageUsersBtn.addEventListener('click', async () => {
+            document.getElementById('user-management-overlay')?.classList.remove('hidden');
+            await renderUsersList();
+          });
+        }
+      }
+    }
+    
+    function createExchangeOnlyView() {
+      // Create a simplified exchange view for regular users
+      const mainSection = document.querySelector('main');
+      if (!mainSection || document.getElementById('user-exchanges-view')) return;
+      
+      const exchangeView = document.createElement('div');
+      exchangeView.id = 'user-exchanges-view';
+      exchangeView.className = 'card p-6 mb-8';
+      exchangeView.innerHTML = `
+        <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <svg class="w-6 h-6 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" /></svg>
+          Exchange Balances
+        </h2>
+        <div id="user-exchanges-list" class="space-y-3"></div>
+      `;
+      mainSection.insertBefore(exchangeView, mainSection.firstChild);
+    }
+
+    async function initializeAppAndAuth() {
+      try {
+        app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
+        setLogLevel('debug');
+
+        onAuthStateChanged(auth, async (user) => {
+          try {
+            if (user) {
+              // Clear one-time "skip anon" after a successful sign-in
+              sessionStorage.removeItem(SKIP_ANON_KEY);
+
+              userId = user.uid;
+              rolesCollection = collection(db, `artifacts/${appId}/roles`);
+
+              // Check user role first to determine data access
+              await checkUserRole();
+              
+              // Determine which user's data to access
+              let dataUserId = userId;
+              if (userRole === 'user') {
+                // Regular users access the admin's shared data
+                const adminRoleDoc = await getDocs(query(rolesCollection, where("role", "==", "admin")));
+                if (!adminRoleDoc.empty) {
+                  dataUserId = adminRoleDoc.docs[0].data().userId;
+                  console.log('Regular user accessing admin data from userId:', dataUserId);
+                }
+              }
+
+              // Initialize collections - regular users access admin's data, admins access their own
+              accountsCollection       = collection(db, `artifacts/${appId}/users/${dataUserId}/accounts`);
+              employeesCollection      = collection(db, `artifacts/${appId}/users/${dataUserId}/employees`);
+              exchangesCollection      = collection(db, `artifacts/${appId}/users/${dataUserId}/exchanges`);
+              banksCollection          = collection(db, `artifacts/${appId}/users/${dataUserId}/banks`);
+              brokersCollection        = collection(db, `artifacts/${appId}/users/${dataUserId}/brokers`);
+              foundersCollection       = collection(db, `artifacts/${appId}/users/${dataUserId}/founders`);
+              expenseTypesCollection   = collection(db, `artifacts/${appId}/users/${dataUserId}/expenseTypes`);
+              
+              // Transactions: users have their own + can see admin's
+              if (userRole === 'user') {
+                // Regular users see their own transactions only
+                transactionsCollection = collection(db, `artifacts/${appId}/users/${userId}/transactions`);
+              } else {
+                // Admin sees their own transactions
+                transactionsCollection = collection(db, `artifacts/${appId}/users/${userId}/transactions`);
+              }
+              
+              // Update user info with role
+              const roleDisplay = userRole === 'admin' ? ' (Admin)' : '';
+              ui.userInfo.textContent = `Logged in as: ${user.email || 'Anonymous User'}${roleDisplay}`;
+              
+              // Log admin confirmation
+              if (userRole === 'admin') {
+                console.log('%c✓ ADMIN ACCESS CONFIRMED', 'background: #7c3aed; color: white; padding: 8px 16px; font-size: 14px; font-weight: bold; border-radius: 4px;');
+                console.log('Admin privileges active for:', user.email);
+                console.log('Available admin features:');
+                console.log('  • View all financial data (Assets, Liabilities, Net Worth)');
+                console.log('  • Access transaction history');
+                console.log('  • Export data');
+                console.log('  • Manage categories');
+                console.log('  • Manage users');
+              } else {
+                console.log('%c⚠ USER ACCESS', 'background: #f59e0b; color: white; padding: 8px 16px; font-size: 14px; font-weight: bold; border-radius: 4px;');
+                console.log('Limited user privileges for:', user.email);
+              }
+              
+              setupDataListeners();
+              ui.loadingOverlay.classList.add('hidden');
+              ui.authOverlay.classList.add('hidden');
+              ui.appContainer.classList.remove('hidden');
+            } else {
+              try {
+                const skipAnon = sessionStorage.getItem(SKIP_ANON_KEY) === '1';
+                if (!skipAnon) {
+                  await signInAnonymously(auth);
+                  return; // next onAuthStateChanged will handle UI
+                }
+              } catch (err) {
+                console.error('Anonymous sign-in failed:', err);
+              }
+
+              // Show login/signup
+              userId = null;
+              unsubscribes.forEach(unsub => unsub());
+              unsubscribes = [];
+
+              ui.loadingOverlay.classList.add('hidden');
+              ui.appContainer.classList.add('hidden');
+              ui.authOverlay.classList.remove('hidden');
+              ui.loginView?.classList.remove('hidden');
+              ui.signupView?.classList.add('hidden');
+            }
+          } catch (e) {
+            console.error('Auth flow error:', e);
+            showNotification(`Auth error: ${e.message}`);
+            ui.loadingOverlay.classList.add('hidden');
+            ui.appContainer.classList.add('hidden');
+            ui.authOverlay.classList.remove('hidden');
+          }
+        });
+      } catch (error) {
+        console.error("Critical Firebase Error:", error);
+        showNotification(`Initialization Failed: ${error.message}`);
+      }
+    }
+
+    function renderUserExchanges(calculatedBalances) {
+      const container = document.getElementById('user-exchanges-list');
+      if (!container) {
+        console.log('⚠️ Exchange container not found');
+        return;
+      }
+      
+      console.log('📊 Rendering exchanges for user');
+      console.log('  Total assets:', calculatedBalances.assets?.length || 0);
+      
+      const exchanges = calculatedBalances.assets.filter(a => a.subType === 'Exchange');
+      console.log('  Exchanges found:', exchanges.length);
+      
+      if (exchanges.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 text-sm">No exchanges available.</p>';
+        return;
+      }
+      
+      container.innerHTML = exchanges.map(ex => `
+        <div class="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+          <div>
+            <p class="font-semibold text-lg">${ex.name}</p>
+            <p class="text-sm text-gray-600">Exchange Balance</p>
+          </div>
+          <p class="text-xl font-bold text-blue-600">$${formatNumber(ex.balance)}</p>
+        </div>
+      `).join('');
+      console.log('✅ Exchanges rendered successfully');
+    }
+
+    function masterRender() {
+      const undefinedCollections = Object.entries(allData)
+        .filter(([key, value]) => value === undefined)
+        .map(([key]) => key);
+      
+      if (undefinedCollections.length > 0) {
+        console.log('⏳ Waiting for data to load...');
+        console.log('  Undefined collections:', undefinedCollections.join(', '));
+        return;
+      }
+
+      console.log('🔄 Master Render Starting...');
+      console.log('  Accounts:', allData.accounts?.length || 0);
+      console.log('  Transactions:', allData.transactions?.length || 0);
+      console.log('  User Role:', userRole);
+
+      const endDate = ui.inputs.historicalDate?.value || null;
+      const calculatedBalances = calculateBalances(allData.accounts, allData.transactions, endDate);
+      
+      console.log('  Calculated Assets:', calculatedBalances.assets?.length || 0);
+      console.log('  Calculated Liabilities:', calculatedBalances.liabilities?.length || 0);
+
+      renderManagedLists();
+      renderMainLists(calculatedBalances);
+      updateDashboard(calculatedBalances, endDate);
+      updateDynamicSelectors(allData);
+      
+      // Render exchanges for regular users
+      if (userRole === 'user') {
+        renderUserExchanges(calculatedBalances);
+      }
+      renderChart(allData.transactions, allData.expenseTypes);
+      renderExpenseBreakdown(allData.transactions, endDate);
+      
+      // Render history with current filter values
+      const filters = {
+          startDate: ui.historyFilters.startDate.value,
+          endDate: ui.historyFilters.endDate.value,
+          accountId: ui.historyFilters.account.value,
+          description: ui.historyFilters.description.value
+      };
+      renderTransactionHistory(allData.transactions, allData.accounts, filters);
+      populateAccountSelect(ui.historyFilters.account, true);
+
+
+      populateAccountSelect(ui.transaction?.fromSelect);
+      populateAccountSelect(ui.transaction?.toSelect);
+      populateAccountSelect(ui.transaction?.singleSelect);
+    }
+
+    function renderMainLists(calculatedBalances) {
+      if (ui.lists.assets)      renderGroupedAccounts(ui.lists.assets, calculatedBalances.assets, 'assets');
+      if (ui.lists.liabilities) renderGroupedAccounts(ui.lists.liabilities, calculatedBalances.liabilities, 'liabilities');
+    }
+
+    function renderManagedLists() {
+      if (ui.lists.employees)    renderManagedList(ui.lists.employees,   allData.employees,   'employees',   handleDeleteEmployee);
+      if (ui.lists.exchanges)    renderManagedList(ui.lists.exchanges,   allData.exchanges,   'exchanges',   (id, name) => handleDeleteCategory(id, name, 'exchanges',   n => allData.accounts?.some(a => a.subType === 'Exchange' && a.name === n)));
+      if (ui.lists.banks)        renderManagedList(ui.lists.banks,       allData.banks,       'banks',       (id, name) => handleDeleteCategory(id, name, 'banks',       n => allData.accounts?.some(a => a.subType === 'Bank'   && a.name === n)));
+      if (ui.lists.brokers)      renderManagedList(ui.lists.brokers,     allData.brokers,     'brokers',     (id, name) => handleDeleteCategory(id, name, 'brokers',     n => allData.accounts?.some(a => a.subType === 'Broker' && a.name === n)));
+      if (ui.lists.founders)     renderManagedList(ui.lists.founders,    allData.founders,    'founders',    (id, name) => handleDeleteCategory(id, name, 'founders',    n => allData.accounts?.some(l => l.subType === 'FounderCredit' && l.founderName === n)));
+      if (ui.lists.expenseTypes) renderManagedList(ui.lists.expenseTypes,allData.expenseTypes,'expenseTypes',(id, name) => handleDeleteCategory(id, name, 'expenseTypes',n => allData.transactions?.some(t => t.type === 'EXPENSE' && t.expenseTypeName === n)));
+    }
+
+    async function setupDataListeners() {
+      console.log('🔌 Setting up data listeners...');
+      unsubscribes.forEach(unsub => unsub());
+      unsubscribes = [];
+      
+      // For regular users, we need to listen to ALL users' transactions for accurate balances
+      if (userRole === 'user') {
+        console.log('  Setting up ALL users transaction listeners for regular user');
+        
+        // Get admin's userId
+        const adminRoleDoc = await getDocs(query(rolesCollection, where("role", "==", "admin")));
+        const adminUserId = adminRoleDoc.empty ? null : adminRoleDoc.docs[0].data().userId;
+        
+        if (adminUserId) {
+          // Listen to admin's transactions
+          const adminTransactionsCollection = collection(db, `artifacts/${appId}/users/${adminUserId}/transactions`);
+          const adminTransactionsUnsub = onSnapshot(adminTransactionsCollection, (snapshot) => {
+            const adminTransactions = snapshot.docs.map(doc => ({ 
+              id: doc.id, 
+              ...doc.data(),
+              ownerId: adminUserId // Mark as admin's transaction
+            }));
+            console.log(`  📦 Admin transactions received: ${adminTransactions.length} items`);
+            
+            // Store admin transactions
+            allData.adminTransactions = adminTransactions;
+            
+            // Combine with all users' transactions
+            const allUserTransactions = allData.allUserTransactions || [];
+            allData.transactions = [...adminTransactions, ...allUserTransactions];
+            masterRender();
+          }, (error) => console.error('❌ Error fetching admin transactions:', error));
+          unsubscribes.push(adminTransactionsUnsub);
+          
+          // Listen to ALL regular users' transactions (including current user)
+          const allUsersTransactionsUnsub = onSnapshot(rolesCollection, async (rolesSnapshot) => {
+            const regularUsers = rolesSnapshot.docs
+              .map(doc => ({ id: doc.id, ...doc.data() }))
+              .filter(role => role.role === 'user');
+            
+            console.log(`  Found ${regularUsers.length} regular users (including self)`);
+            
+            // Unsubscribe from previous user transaction listeners
+            if (allData.userTransactionUnsubs) {
+              allData.userTransactionUnsubs.forEach(unsub => unsub());
+            }
+            allData.userTransactionUnsubs = [];
+            
+            // Listen to each user's transactions
+            const allUserTransactions = [];
+            for (const user of regularUsers) {
+              const userTransCol = collection(db, `artifacts/${appId}/users/${user.userId}/transactions`);
+              const userUnsub = onSnapshot(userTransCol, (snapshot) => {
+                const userTrans = snapshot.docs.map(doc => ({ 
+                  id: doc.id, 
+                  ...doc.data(),
+                  ownerId: user.userId,
+                  ownerEmail: user.email
+                }));
+                
+                console.log(`  📦 User ${user.email || user.userId} transactions: ${userTrans.length} items`);
+                
+                // Update this user's transactions in the combined array
+                const otherUsersTrans = allUserTransactions.filter(t => t.ownerId !== user.userId);
+                allUserTransactions.length = 0;
+                allUserTransactions.push(...otherUsersTrans, ...userTrans);
+                
+                // Store and combine with admin transactions
+                allData.allUserTransactions = [...allUserTransactions];
+                const adminTrans = allData.adminTransactions || [];
+                allData.transactions = [...adminTrans, ...allUserTransactions];
+                masterRender();
+              }, (error) => console.error(`❌ Error fetching user ${user.email} transactions:`, error));
+              
+              allData.userTransactionUnsubs.push(userUnsub);
+            }
+          }, (error) => console.error('❌ Error fetching roles:', error));
+          unsubscribes.push(allUsersTransactionsUnsub);
+        }
+        
+        // Listen to other collections (admin's data)
+        const collectionsToListen = {
+          accounts: accountsCollection,
+          employees: employeesCollection,
+          exchanges: exchangesCollection,
+          banks: banksCollection,
+          brokers: brokersCollection,
+          founders: foundersCollection,
+          expenseTypes: expenseTypesCollection
+        };
+        
+        for (const key in collectionsToListen) {
+          const collectionRef = collectionsToListen[key];
+          console.log(`  Setting up listener for: ${key}`);
+          
+          const unsubscribe = onSnapshot(collectionRef, (snapshot) => {
+            console.log(`  📦 ${key} data received: ${snapshot.docs.length} items`);
+            allData[key] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            masterRender();
+          }, (error) => {
+            console.error(`❌ Error fetching ${key}:`, error);
+          });
+          unsubscribes.push(unsubscribe);
+        }
+      } else {
+        // Admin sees all users' data
+        console.log('  Setting up admin listeners (including all users transactions)');
+        
+        // Listen to admin's own transactions
+        const adminTransactionsUnsub = onSnapshot(transactionsCollection, (snapshot) => {
+          const adminTransactions = snapshot.docs.map(doc => ({ 
+            id: doc.id, 
+            ...doc.data(),
+            ownerId: userId // Mark as admin's transaction
+          }));
+          console.log(`  📦 Admin transactions received: ${adminTransactions.length} items`);
+          
+          // Combine with all users' transactions
+          const userTransactions = allData.allUserTransactions || [];
+          allData.transactions = [...adminTransactions, ...userTransactions];
+          masterRender();
+        }, (error) => console.error('❌ Error fetching admin transactions:', error));
+        unsubscribes.push(adminTransactionsUnsub);
+        
+        // Listen to all regular users' transactions
+        const allUsersTransactionsUnsub = onSnapshot(rolesCollection, async (rolesSnapshot) => {
+          const regularUsers = rolesSnapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(role => role.role === 'user');
+          
+          console.log(`  Found ${regularUsers.length} regular users`);
+          
+          // Unsubscribe from previous user transaction listeners
+          if (allData.userTransactionUnsubs) {
+            allData.userTransactionUnsubs.forEach(unsub => unsub());
+          }
+          allData.userTransactionUnsubs = [];
+          
+          // Listen to each user's transactions
+          const allUserTransactions = [];
+          for (const user of regularUsers) {
+            const userTransCol = collection(db, `artifacts/${appId}/users/${user.userId}/transactions`);
+            const userUnsub = onSnapshot(userTransCol, (snapshot) => {
+              const userTrans = snapshot.docs.map(doc => ({ 
+                id: doc.id, 
+                ...doc.data(),
+                ownerId: user.userId,
+                ownerEmail: user.email
+              }));
+              
+              console.log(`  📦 User ${user.email} transactions: ${userTrans.length} items`);
+              
+              // Update this user's transactions in the combined array
+              const otherUsersTrans = allUserTransactions.filter(t => t.ownerId !== user.userId);
+              allUserTransactions.length = 0;
+              allUserTransactions.push(...otherUsersTrans, ...userTrans);
+              
+              // Store and combine with admin transactions
+              allData.allUserTransactions = [...allUserTransactions];
+              const adminTrans = allData.transactions?.filter(t => t.ownerId === userId) || [];
+              allData.transactions = [...adminTrans, ...allUserTransactions];
+              masterRender();
+            }, (error) => console.error(`❌ Error fetching user ${user.email} transactions:`, error));
+            
+            allData.userTransactionUnsubs.push(userUnsub);
+          }
+        }, (error) => console.error('❌ Error fetching roles:', error));
+        unsubscribes.push(allUsersTransactionsUnsub);
+        
+        // Listen to other collections
+        const collectionsToListen = {
+          accounts: accountsCollection,
+          employees: employeesCollection,
+          exchanges: exchangesCollection,
+          banks: banksCollection,
+          brokers: brokersCollection,
+          founders: foundersCollection,
+          expenseTypes: expenseTypesCollection
+        };
+        
+        console.log('  Collections to listen:', Object.keys(collectionsToListen).join(', '));
+        
+        for (const key in collectionsToListen) {
+          const collectionRef = collectionsToListen[key];
+          console.log(`  Setting up listener for: ${key}`);
+          
+          const unsubscribe = onSnapshot(collectionRef, (snapshot) => {
+            console.log(`  📦 ${key} data received: ${snapshot.docs.length} items`);
+            allData[key] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            masterRender();
+          }, (error) => {
+            console.error(`❌ Error fetching ${key}:`, error);
+          });
+          unsubscribes.push(unsubscribe);
+        }
+      }
+      
+      console.log('✅ All listeners set up');
+    }
+
+    function renderList(element, items, itemHtmlGenerator, _collectionName, deleteHandler) {
+      if (!element) return;
+      element.innerHTML = '';
+      if (!items || items.length === 0) {
+        element.innerHTML = `<p class="text-gray-500 text-sm">No items added yet.</p>`;
+        return;
+      }
+      const sortedItems = [...items].sort((a,b) => (b.createdAt && a.createdAt) ? new Date(b.createdAt) - new Date(a.createdAt) : 0);
+      sortedItems.forEach(item => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-lg';
+        itemEl.innerHTML = itemHtmlGenerator(item);
+        element.appendChild(itemEl);
+        itemEl.querySelector('.delete-btn')?.addEventListener('click', () => deleteHandler(item.id, item.name));
+      });
+    }
+
+    function renderManagedList(element, items, collectionName, deleteHandler) {
+      renderList(
+        element,
+        items,
+        (item) => `<p class="font-semibold">${item.name}</p><button class="delete-btn text-gray-400 hover:text-red-500">&times;</button>`,
+        collectionName,
+        deleteHandler
+      );
+    }
+
+    // ----------------- Grouped Assets / Liabilities -----------------
+    function slug(s) { return (s || 'other').toString().replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'').toLowerCase(); }
+
+    function groupTitle(side, key) {
+      const mapAssets = {
+        Exchange: 'Exchanges',
+        Bank: 'Bank Balances',
+        Broker: 'Broker Balances',
+        Cash: 'Cash on Hand',
+        Advance: 'Advances to Employees',
+        Other: 'Other Assets'
+      };
+      const mapLiabs = {
+        Payable: 'Payables to Employees',
+        FounderCredit: 'Founder Credits',
+        Credit: 'Credits',
+        Other: 'Other Liabilities'
+      };
+      if (side === 'assets') return mapAssets[key] || key || 'Other Assets';
+      return mapLiabs[key] || key || 'Other Liabilities';
+    }
+
+    function groupAccounts(accounts, side) {
+      const groups = {};
+      (accounts || []).forEach(a => {
+        const key = a.subType || 'Other';
+        if (!groups[key]) groups[key] = { key, items: [] };
+        groups[key].items.push(a);
+      });
+      const result = Object.values(groups).map(g => {
+        g.items.sort((a,b) => (b.balance||0) - (a.balance||0));
+        g.total = g.items.reduce((s,a)=>s+(a.balance||0),0);
+        g.count = g.items.length;
+        g.title = groupTitle(side, g.key);
+        return g;
+      });
+      // sort groups by total descending
+      result.sort((a,b)=> (b.total||0) - (a.total||0));
+      return result;
+    }
+
+    function renderGroupedAccounts(element, accounts, side) {
+      if (!element) return;
+      element.innerHTML = '';
+
+      const colorClass = side === 'assets' ? 'text-green-600' : 'text-red-600';
+      const groups = groupAccounts(accounts, side);
+
+      if (groups.length === 0) {
+        element.innerHTML = `
+        <div class="text-center py-10">
+            <div class="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                <svg class="w-8 h-8 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+                </svg>
+            </div>
+            <p class="mt-4 text-gray-500 text-sm">No ${side} found.</p>
+            <p class="text-gray-400 text-xs">Add your first one to get started.</p>
+        </div>`;
+        return;
+      }
+
+      const parts = [];
+      groups.forEach(g => {
+        const kSlug = slug(g.key);
+        const open = expandState[side][kSlug] ?? false;
+
+        parts.push(`
+          <div class="p-3 bg-gray-50 rounded-lg">
+            <div class="flex justify-between items-center">
+              <div class="flex items-center gap-2">
+                <button class="group-toggle chev" data-side="${side}" data-key="${kSlug}" aria-expanded="${open}">${open ? '▾' : '▸'}</button>
+                <p class="font-semibold">${g.title} <span class="text-xs text-gray-500">(${g.count})</span></p>
+              </div>
+              <p class="font-medium ${colorClass}">$${formatNumber(g.total)}</p>
+            </div>
+            <div id="group-details-${side}-${kSlug}" class="mt-3 ${open ? '' : 'hidden'}">
+              ${g.items.map(a => `
+                <div class="flex justify-between items-center p-2 pl-8 rounded-md hover:bg-white">
+                  <p class="truncate">${a.displayName || accountDisplayName(a)}</p>
+                  <div class="flex items-center gap-4">
+                    <p class="${colorClass} font-medium shrink-0">$${formatNumber(a.balance)}</p>
+                    <button data-id="${a.id}" class="delete-btn text-gray-400 hover:text-red-500" title="Delete account">&times;</button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `);
+      });
+
+      element.innerHTML = parts.join('');
+
+      element.querySelectorAll('.group-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const side = btn.dataset.side;
+          const key  = btn.dataset.key;
+          const panel = document.getElementById(`group-details-${side}-${key}`);
+          const isOpen = !panel.classList.contains('hidden');
+          expandState[side][key] = !isOpen;
+          panel.classList.toggle('hidden', isOpen);
+          btn.textContent = isOpen ? '▸' : '▾';
+          btn.setAttribute('aria-expanded', String(!isOpen));
+        });
+      });
+
+      element.querySelectorAll('.delete-btn[data-id]').forEach(btn => {
+        btn.addEventListener('click', () => handleDeleteAccount(btn.getAttribute('data-id')));
+      });
+    }
+    // ---------------------------------------------------------------
+
+    function renderTransactionHistory(transactions, accounts, filters = {}) {
+        const element = ui.lists.transactionHistory;
+        if (!element) return;
+
+        let filteredTransactions = [...(transactions || [])];
+        
+        // Regular users see only their own transactions
+        if (userRole === 'user') {
+            filteredTransactions = filteredTransactions.filter(t => t.ownerId === userId);
+        }
+
+        if (filters.startDate) {
+            filteredTransactions = filteredTransactions.filter(t => t.date >= filters.startDate);
+        }
+        if (filters.endDate) {
+            filteredTransactions = filteredTransactions.filter(t => t.date <= filters.endDate);
+        }
+        if (filters.accountId) {
+            filteredTransactions = filteredTransactions.filter(t => t.accountId === filters.accountId);
+        }
+        if (filters.description) {
+            const searchTerm = filters.description.toLowerCase();
+            filteredTransactions = filteredTransactions.filter(t => t.description.toLowerCase().includes(searchTerm));
+        }
+
+        if (filteredTransactions.length === 0) {
+            element.innerHTML = `<p class="text-gray-500 text-sm text-center py-4">No transactions match the current filters.</p>`;
+            return;
+        }
+
+        const getAccountDisplayName = (accountId) => {
+            const account = accounts.find(a => a.id === accountId);
+            if (!account) return "Unknown Account";
+            return accountDisplayName(account);
+        };
+
+        const sortedTransactions = filteredTransactions.sort((a,b) => {
+            const ad = a.createdAt ? new Date(a.createdAt) : new Date((a.date||'') + 'T00:00:00');
+            const bd = b.createdAt ? new Date(b.createdAt) : new Date((b.date||'') + 'T00:00:00');
+            return bd - ad;
+        });
+
+        element.innerHTML = sortedTransactions.map(t => {
+            const amountColor = t.amount > 0 ? 'text-green-600' : 'text-red-600';
+            const sign = t.amount > 0 ? '+' : '';
+            return `
+            <div class="p-3 bg-gray-50 rounded-lg">
+                <div class="flex justify-between items-start gap-3">
+                <div class="min-w-0">
+                    <p class="font-bold break-words">${t.description}</p>
+                    <p class="text-sm text-gray-600">
+                    ${getAccountDisplayName(t.accountId)} |
+                    <span class="font-medium">${new Date((t.date||'') + 'T00:00:00').toLocaleDateString()}</span>
+                    ${t.type ? `| <span class="uppercase">${t.type}</span>` : ''}
+                    </p>
+                </div>
+                <div class="flex items-start gap-3 shrink-0">
+                    <p class="font-bold ${amountColor}">${sign}$${formatNumber(t.amount)}</p>
+                    <button class="edit-transaction-btn text-gray-400 hover:text-blue-500" title="Edit"
+                            data-id="${t.id}" data-description="${t.description || ''}" data-amount="${Math.abs(t.amount)}" data-date="${t.date || ''}">
+                    ✎
+                    </button>
+                    <button class="delete-transaction-btn text-gray-400 hover:text-red-500" title="Delete"
+                            data-id="${t.id}" data-type="${t.type || ''}" data-account="${t.accountId}" data-created="${t.createdAt || ''}">
+                    &times;
+                    </button>
+                </div>
+                </div>
+            </div>
+            `;
+        }).join('');
+
+        element.querySelectorAll('.edit-transaction-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById('edit-transaction-id').value = btn.dataset.id;
+                document.getElementById('edit-description').value = btn.dataset.description;
+                document.getElementById('edit-amount').value = btn.dataset.amount;
+                document.getElementById('edit-date').value = btn.dataset.date;
+                document.getElementById('edit-transaction-overlay').classList.remove('hidden');
+            });
+        });
+
+        element.querySelectorAll('.delete-transaction-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+            handleDeleteTransaction(btn.dataset.id, btn.dataset.type, btn.dataset.account, btn.dataset.created);
+            });
+        });
+    }
+
+    async function handleDeleteTransaction(id, type, accountId, createdAt) {
+      try {
+        const tx = (allData.transactions || []).find(t => t.id === id);
+        if (!tx) { showNotification('Transaction not found.'); return; }
+
+        let onlyTxForAccount = false;
+        if (type === 'INITIAL' && accountId) {
+          const q = query(transactionsCollection, where('accountId', '==', accountId));
+          const snap = await getDocs(q);
+          onlyTxForAccount = snap.size <= 1;
+        }
+
+        let confirmValue = null;
+        if (type === 'TRANSFER' && createdAt) {
+          confirmValue = await openConfirm({
+            title: 'Delete Transfer',
+            message: 'This will delete both sides of this transfer.',
+            buttons: [
+              { label: 'Cancel', value: null, className: 'px-4 py-2 rounded-md bg-gray-200' },
+              { label: 'Delete Transfer', value: 'delete', className: 'px-4 py-2 rounded-md bg-red-600 text-white' }
+            ]
+          });
+          if (!confirmValue) return;
+        } else if (type === 'INITIAL' && onlyTxForAccount) {
+          confirmValue = await openConfirm({
+            title: 'Delete Initial Transaction',
+            message: 'This is the only transaction for this account.',
+            buttons: [
+              { label: 'Cancel', value: null, className: 'px-4 py-2 rounded-md bg-gray-200' },
+              { label: 'Delete Transaction Only', value: 'txn', className: 'px-4 py-2 rounded-md bg-amber-500 text-white' },
+              { label: 'Delete Transaction + Account', value: 'both', className: 'px-4 py-2 rounded-md bg-red-600 text-white' }
+            ]
+          });
+          if (!confirmValue) return;
+        } else {
+          confirmValue = await openConfirm({
+            title: 'Delete Transaction',
+            message: 'Are you sure you want to delete this transaction?',
+            buttons: [
+              { label: 'Cancel', value: null, className: 'px-4 py-2 rounded-md bg-gray-200' },
+              { label: 'Delete', value: 'delete', className: 'px-4 py-2 rounded-md bg-red-600 text-white' }
+            ]
+          });
+          if (!confirmValue) return;
+        }
+
+        const itemsForUndo = [];
+
+        if (type === 'TRANSFER' && createdAt) {
+          // For transfers, we need to find both sides and delete from correct owner's collection
+          const transferOwnerId = tx.ownerId || userId;
+          const q = query(
+            collection(db, `artifacts/${appId}/users/${transferOwnerId}/transactions`), 
+            where('type', '==', 'TRANSFER'), 
+            where('createdAt', '==', createdAt)
+          );
+          const snap = await getDocs(q);
+          const batch = writeBatch(db);
+          snap.forEach(d => {
+            itemsForUndo.push({ kind: 'transaction', id: d.id, data: d.data() });
+            batch.delete(d.ref);
+          });
+          await batch.commit();
+          showUndo(itemsForUndo, 'Transfer deleted');
+          return;
+        }
+
+        if (type === 'INITIAL' && onlyTxForAccount && confirmValue === 'both') {
+          const accountDoc = (allData.accounts || []).find(a => a.id === accountId);
+          if (accountDoc) itemsForUndo.push({ kind: 'account', id: accountDoc.id, data: { ...accountDoc } });
+          itemsForUndo.push({ kind: 'transaction', id, data: { ...tx } });
+
+          // Delete from correct owner's collection
+          const transactionOwnerId = tx.ownerId || userId;
+          const batch = writeBatch(db);
+          batch.delete(doc(db, `artifacts/${appId}/users/${transactionOwnerId}/transactions`, id));
+          // Accounts are always in admin's collection
+          if (accountDoc) batch.delete(doc(db, `artifacts/${appId}/users/${userId}/accounts`, accountId));
+          await batch.commit();
+          showUndo(itemsForUndo, 'Initial + account deleted');
+          return;
+        }
+
+        itemsForUndo.push({ kind: 'transaction', id, data: { ...tx } });
+        
+        // Delete from the correct user's collection based on ownerId
+        const transactionOwnerId = tx.ownerId || userId;
+        await deleteDoc(doc(db, `artifacts/${appId}/users/${transactionOwnerId}/transactions`, id));
+        showUndo(itemsForUndo, 'Transaction deleted');
+      } catch (err) {
+        console.error('Delete transaction failed:', err);
+        showNotification(err.message || 'Failed to delete transaction.');
+      }
+    }
+
+    async function handleDeleteAccount(accountId, name) {
+      try {
+        const account = (allData.accounts || []).find(a => a.id === accountId);
+        if (!account) return;
+
+        const q = query(transactionsCollection, where("accountId", "==", accountId));
+        const querySnapshot = await getDocs(q);
+
+        const isOnlyInitial = querySnapshot.size === 1 && querySnapshot.docs[0].data().type === 'INITIAL';
+
+        const c = await openConfirm({
+          title: 'Delete Account',
+          message: isOnlyInitial
+            ? 'Delete this account and its initial transaction?'
+            : 'This account has non-initial transactions and cannot be deleted.',
+          buttons: isOnlyInitial
+            ? [
+                { label: 'Cancel', value: null, className: 'px-4 py-2 rounded-md bg-gray-200' },
+                { label: 'Delete', value: 'delete', className: 'px-4 py-2 rounded-md bg-red-600 text-white' }
+              ]
+            : [
+                { label: 'OK', value: null, className: 'px-4 py-2 rounded-md bg-gray-200' }
+              ]
+        });
+        if (c !== 'delete') return;
+
+        const itemsForUndo = [];
+        itemsForUndo.push({ kind: 'account', id: accountId, data: { ...account } });
+        querySnapshot.forEach(d => itemsForUndo.push({ kind: 'transaction', id: d.id, data: d.data() }));
+
+        const batch = writeBatch(db);
+        const accountRef = doc(db, `artifacts/${appId}/users/${userId}/accounts`, accountId);
+        batch.delete(accountRef);
+        querySnapshot.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+
+        showUndo(itemsForUndo, 'Account deleted');
+      } catch (error) {
+        console.error("Error deleting account:", error);
+        showNotification("Error deleting account.");
+      }
+    }
+
+    async function handleDeleteEmployee(employeeId, name) {
+      const accounts = calculateBalances(allData.accounts, allData.transactions);
+      const hasBalance =
+        accounts.assets.some(a => a.employeeId === employeeId && a.balance > 0.001) ||
+        accounts.liabilities.some(l => l.employeeId === employeeId && l.balance > 0.001);
+
+      if (hasBalance) { showNotification("Cannot delete employee with an outstanding balance."); return; }
+      try {
+        await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/employees`, employeeId));
+      } catch (error) {
+        console.error("Error deleting employee:", error);
+        showNotification("Error deleting employee.");
+      }
+    }
+
+    async function handleDeleteCategory(itemId, name, collectionName, inUseCheck) {
+      if (inUseCheck && inUseCheck(name)) {
+        showNotification(`Cannot delete "${name}" as it is currently in use.`);
+        return;
+      }
+      try {
+        await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/${collectionName}`, itemId));
+      } catch (error) {
+        console.error(`Error deleting from ${collectionName}:`, error);
+        showNotification(`Error deleting ${name}.`);
+      }
+    }
+
+    function calculateBalances(accounts, transactions, endDate = null) {
+      const balances = {};
+      (accounts || []).forEach(acc => {
+        balances[acc.id] = { ...acc, balance: 0, displayName: '' };
+      });
+
+      const filteredTransactions = endDate
+        ? (transactions || []).filter(t => t.date <= endDate)
+        : (transactions || []);
+
+      filteredTransactions.forEach(t => {
+        if (balances[t.accountId]) {
+          balances[t.accountId].balance += t.amount;
+        }
+      });
+
+      const assets = [];
+      const liabilities = [];
+      for (const id in balances) {
+        const account = balances[id];
+        switch(account.subType) {
+          case 'Exchange':      account.displayName = `Exchange: ${account.name}`; break;
+          case 'Bank':          account.displayName = `Bank: ${account.name}`; break;
+          case 'Broker':        account.displayName = `Broker: ${account.name}`; break;
+          case 'Cash':          account.displayName = 'Cash on Hand'; break;
+          case 'Advance':       account.displayName = `Advance to: ${account.employeeName}`; break;
+          case 'Payable':       account.displayName = `Payable to: ${account.employeeName}`; break;
+          case 'FounderCredit': account.displayName = `Credit from: ${account.founderName}`; break;
+          case 'Credit':        account.displayName = `Credit: ${account.name}`; break;
+          default:              account.displayName = account.name;
+        }
+
+        if (account.type === 'ASSET') assets.push(account);
+        else if (account.type === 'LIABILITY') liabilities.push(account);
+      }
+      return { assets, liabilities };
+    }
+
+    function updateDashboard(calculatedBalances, endDate = null) {
+      const assetTotal = calculatedBalances.assets.reduce((sum, a) => sum + a.balance, 0);
+      const liabilityTotal = calculatedBalances.liabilities.reduce((sum, l) => sum + l.balance, 0);
+      const netWorth = assetTotal - liabilityTotal;
+
+      if (ui.totalBalance)      ui.totalBalance.textContent      = `$${formatNumber(netWorth)}`;
+      if (ui.totalAssets)       ui.totalAssets.textContent       = `$${formatNumber(assetTotal)}`;
+      if (ui.totalLiabilities)  ui.totalLiabilities.textContent  = `$${formatNumber(liabilityTotal)}`;
+
+      // Calculate monthly income/expenses for the selected month
+      let actualEndDate;
+      let year, month;
+      
+      if (endDate) {
+        actualEndDate = endDate;
+        const parts = endDate.split('-');
+        year = parseInt(parts[0]);
+        month = parseInt(parts[1]);
+      } else {
+        const now = new Date();
+        actualEndDate = now.toISOString().split('T')[0];
+        year = now.getFullYear();
+        month = now.getMonth() + 1;
+      }
+      
+      // Format first day of month as YYYY-MM-01
+      const firstDayOfMonth = `${year}-${String(month).padStart(2, '0')}-01`;
+      
+      // Only include transactions within the month AND on or before the selected date
+      const monthlyExpenses = (allData.transactions || [])
+        .filter(t => (t.type === 'EXPENSE' || t.type === 'EXPENSE_PAYABLE') && t.date >= firstDayOfMonth && t.date <= actualEndDate)
+        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+      
+      const monthlyIncome = (allData.transactions || [])
+        .filter(t => t.type === 'INCOME' && t.date >= firstDayOfMonth && t.date <= actualEndDate)
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      if (ui.monthlyExpenses) ui.monthlyExpenses.textContent = `$${formatNumber(monthlyExpenses)}`;
+      if (ui.monthlyIncome) ui.monthlyIncome.textContent = `$${formatNumber(monthlyIncome)}`;
+    }
+
+    function renderChart(transactions, expenseTypesData) {
+        const canvas = document.getElementById('expenseChart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+
+        const allCategories = (expenseTypesData || []).map(et => et.name);
+        allCategories.push('Uncategorized');
+
+        const categoryColors = {};
+        const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#E7E9ED', '#7C8B96'];
+        allCategories.forEach((cat, index) => {
+            categoryColors[cat] = colors[index % colors.length];
+        });
+
+        const expenses = (transactions || []).filter(t => t.type === 'EXPENSE' || t.type === 'EXPENSE_PAYABLE');
+        const monthlyData = {};
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+        sixMonthsAgo.setDate(1);
+
+        expenses.forEach(expense => {
+            const expenseDate = new Date(expense.date + 'T00:00:00');
+            if (expenseDate >= sixMonthsAgo) {
+                const month = expenseDate.toLocaleString('default', { month: 'short', year: '2-digit' });
+                const category = expense.expenseTypeName || 'Uncategorized';
+                const expenseValue = Math.abs(parseFloat(expense.amount));
+                
+                if (!monthlyData[month]) {
+                    monthlyData[month] = {};
+                }
+                monthlyData[month][category] = (monthlyData[month][category] || 0) + expenseValue;
+            }
+        });
+
+        const labels = Array.from({length: 6}, (_, i) => {
+            const d = new Date();
+            d.setMonth(d.getMonth() - (5 - i));
+            return d.toLocaleString('default', { month: 'short', year: '2-digit' });
+        });
+
+        const datasets = allCategories.map(category => {
+            return {
+                label: category,
+                data: labels.map(label => monthlyData[label]?.[category] || 0),
+                backgroundColor: categoryColors[category],
+            };
+        });
+
+        if (expenseChart) {
+            expenseChart.data.labels = labels;
+            expenseChart.data.datasets = datasets;
+            expenseChart.update();
+        } else {
+            expenseChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { stacked: true },
+                        y: { 
+                            stacked: true,
+                            beginAtZero: true,
+                            ticks: { callback: value => '$' + value.toLocaleString('en-US') }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: { 
+                            callbacks: { 
+                                label: c => `${c.dataset.label}: $${formatNumber(c.raw)}` 
+                            } 
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    function renderExpenseBreakdown(transactions, endDate = null) {
+      const container = ui.lists.expenseBreakdown;
+      if (!container) return;
+
+      let actualEndDate;
+      let year, month;
+      
+      if (endDate) {
+        actualEndDate = endDate;
+        const parts = endDate.split('-');
+        year = parseInt(parts[0]);
+        month = parseInt(parts[1]);
+      } else {
+        const now = new Date();
+        actualEndDate = now.toISOString().split('T')[0];
+        year = now.getFullYear();
+        month = now.getMonth() + 1;
+      }
+      
+      // Format first day of month as YYYY-MM-01
+      const firstDayOfMonth = `${year}-${String(month).padStart(2, '0')}-01`;
+      
+      const monthlyExpenses = (transactions || []).filter(t => (t.type === 'EXPENSE' || t.type === 'EXPENSE_PAYABLE') && t.date >= firstDayOfMonth && t.date <= actualEndDate);
+
+      const breakdown = monthlyExpenses.reduce((acc, expense) => {
+        const type = expense.expenseTypeName || 'Uncategorized';
+        const expenseValue = Math.abs(parseFloat(expense.amount));
+        acc[type] = (acc[type] || 0) + expenseValue;
+        return acc;
+      }, {});
+
+      const sortedBreakdown = Object.entries(breakdown).sort(([,a],[,b]) => b-a);
+
+      if (sortedBreakdown.length === 0) {
+        container.innerHTML = `<p class="text-gray-500 text-sm">No expenses recorded this month.</p>`;
+        return;
+      }
+
+      container.innerHTML = sortedBreakdown.map(([type, amount]) => `
+        <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+          <p class="font-semibold">${type}</p>
+          <p class="font-medium text-orange-600">$${formatNumber(amount)}</p>
+        </div>
+      `).join('');
+    }
+
+    function populateSelect(selectElement, items, valueKey = 'name', textKey = 'name') {
+      if (!selectElement) return;
+      const currentValue = selectElement.value;
+      const placeholder = selectElement.querySelector('option[value=""]');
+      selectElement.innerHTML = '';
+      if(placeholder) selectElement.appendChild(placeholder);
+      
+      const sortedItems = [...(items || [])].sort((a, b) => {
+          return a[textKey].localeCompare(b[textKey]);
+      });
+
+      sortedItems.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item[valueKey];
+        option.textContent = item[textKey];
+        selectElement.appendChild(option);
+      });
+      selectElement.value = currentValue;
+    }
+
+    function updateDynamicSelectors({ accounts, employees, exchanges, banks, brokers, founders, expenseTypes }) {
+      if (ui.selects.expenseSource) {
+        let sortedAssets;
+        
+        if (userRole === 'user') {
+          // Regular users can only pay from exchanges
+          sortedAssets = ((accounts || [])
+              .filter(a => a.type === 'ASSET' && a.subType === 'Exchange')
+              .map(a => ({ id: a.id, name: accountDisplayName(a) })))
+              .sort((a, b) => a.name.localeCompare(b.name));
+        } else {
+          // Admin can pay from any asset
+          sortedAssets = ((accounts || [])
+              .filter(a => a.type === 'ASSET')
+              .map(a => ({ id: a.id, name: accountDisplayName(a) })))
+              .sort((a, b) => a.name.localeCompare(b.name));
+        }
+
+        const allFundingSources = userRole === 'user' 
+          ? [
+              { type: 'Header', name: '--- EXCHANGES ---' },
+              ...sortedAssets,
+              { type: 'Header', name: '--- OTHER SOURCES ---' },
+              { id: 'employee', name: 'Paid by Employee (creates payable)', collection: 'special' }
+            ]
+          : [
+              { type: 'Header', name: '--- ASSETS ---' },
+              ...sortedAssets,
+              { type: 'Header', name: '--- OTHER SOURCES ---' },
+              { id: 'employee', name: 'Paid by Employee (creates payable)', collection: 'special' }
+            ];
+            
+        const currentSource = ui.selects.expenseSource.value;
+        const placeholder = ui.selects.expenseSource.querySelector('option[value=""]');
+        ui.selects.expenseSource.innerHTML = '';
+        if(placeholder) ui.selects.expenseSource.appendChild(placeholder);
+
+        allFundingSources.forEach(source => {
+          const option = document.createElement('option');
+          if (source.type === 'Header') {
+            option.disabled = true;
+            option.textContent = source.name;
+            option.classList.add('font-bold', 'bg-gray-200');
+          } else {
+            option.value = source.id;
+            option.textContent = source.name;
+          }
+          ui.selects.expenseSource.appendChild(option);
+        });
+        ui.selects.expenseSource.value = currentSource;
+      }
+
+      populateSelect(ui.selects.assetEmployee,     employees, 'id', 'name');
+      populateSelect(ui.selects.liabilityEmployee, employees, 'id', 'name');
+      populateSelect(ui.selects.liabilityFounder,  founders,  'id', 'name');
+      populateSelect(ui.selects.balanceName,       exchanges);
+      populateSelect(ui.selects.assetBank,         banks);
+      populateSelect(ui.selects.assetBroker,       brokers);
+      
+      console.log('📝 Populating expense categories:', expenseTypes?.length || 0);
+      populateSelect(ui.selects.expenseType,       expenseTypes, 'id', 'name');
+      
+      console.log('👥 Populating employees:', employees?.length || 0);
+      populateSelect(ui.selects.expenseEmployee,   employees, 'id', 'name');
+    }
+
+    function toggleField(containerEl, controlEl, show) {
+      if (!containerEl || !controlEl) return;
+      containerEl.style.display = show ? 'block' : 'none';
+      controlEl.disabled = !show;
+      if (controlEl.tagName === 'SELECT' || controlEl.tagName === 'INPUT') {
+        controlEl.required = show;
+      }
+    }
+
+    function renderExpensesAnalysis() {
+      const startDate = document.getElementById('expense-filter-start-date')?.value || '';
+      const endDate = document.getElementById('expense-filter-end-date')?.value || '';
+      const categoryFilter = document.getElementById('expense-filter-category')?.value || '';
+      
+      let expenses = (allData.transactions || []).filter(t => t.type === 'EXPENSE' || t.type === 'EXPENSE_PAYABLE');
+      
+      // Filter by user role - regular users see only their own expenses
+      if (userRole === 'user') {
+        expenses = expenses.filter(t => t.ownerId === userId);
+      }
+      
+      if (startDate) expenses = expenses.filter(t => t.date >= startDate);
+      if (endDate) expenses = expenses.filter(t => t.date <= endDate);
+      if (categoryFilter) expenses = expenses.filter(t => t.expenseTypeName === categoryFilter);
+      
+      const total = expenses.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+      const count = expenses.length;
+      const average = count > 0 ? total / count : 0;
+      
+      // Group by category
+      const byCategory = {};
+      expenses.forEach(t => {
+        const cat = t.expenseTypeName || 'Uncategorized';
+        const amount = Math.abs(t.amount);
+        if (!byCategory[cat]) {
+          byCategory[cat] = { name: cat, total: 0, count: 0 };
+        }
+        byCategory[cat].total += amount;
+        byCategory[cat].count += 1;
+      });
+      
+      const categories = Object.values(byCategory).sort((a, b) => b.total - a.total);
+      const topCategory = categories[0];
+      
+      // Update summary
+      document.getElementById('expenses-total').textContent = `$${formatNumber(total)}`;
+      document.getElementById('expenses-count').textContent = `${count} transaction${count !== 1 ? 's' : ''}`;
+      document.getElementById('expenses-average').textContent = `$${formatNumber(average)}`;
+      document.getElementById('expenses-top-category').textContent = topCategory ? topCategory.name : '-';
+      document.getElementById('expenses-top-amount').textContent = topCategory ? `$${formatNumber(topCategory.total)}` : '$0.00';
+      
+      // Populate category filter
+      const categorySelect = document.getElementById('expense-filter-category');
+      if (categorySelect) {
+        const currentValue = categorySelect.value;
+        const expenseTypes = allData.expenseTypes || [];
+        categorySelect.innerHTML = '<option value="">All Categories</option>';
+        expenseTypes.forEach(et => {
+          const opt = document.createElement('option');
+          opt.value = et.name;
+          opt.textContent = et.name;
+          categorySelect.appendChild(opt);
+        });
+        categorySelect.value = currentValue;
+      }
+      
+      // Render category list
+      const listEl = document.getElementById('expenses-by-category-list');
+      if (listEl) {
+        if (categories.length === 0) {
+          listEl.innerHTML = '<p class="text-gray-500 text-sm text-center py-4">No expenses found for the selected filters.</p>';
+        } else {
+          listEl.innerHTML = categories.map(cat => {
+            const percentage = total > 0 ? (cat.total / total * 100).toFixed(1) : 0;
+            return `
+              <div class="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors" data-category="${cat.name}">
+                <div class="flex justify-between items-center mb-2">
+                  <div>
+                    <p class="font-bold text-lg">${cat.name}</p>
+                    <p class="text-sm text-gray-600">${cat.count} transaction${cat.count !== 1 ? 's' : ''} • Click to view</p>
+                  </div>
+                  <div class="text-right">
+                    <p class="font-bold text-xl text-orange-600">$${formatNumber(cat.total)}</p>
+                    <p class="text-sm text-gray-600">${percentage}% of total</p>
+                  </div>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                  <div class="bg-orange-500 h-2 rounded-full" style="width: ${percentage}%"></div>
+                </div>
+              </div>
+            `;
+          }).join('');
+          
+          // Add click handlers to category cards
+          listEl.querySelectorAll('[data-category]').forEach(card => {
+            card.addEventListener('click', () => {
+              const categoryName = card.dataset.category;
+              showExpenseTransactions(categoryName, expenses);
+            });
+          });
+        }
+      }
+    }
+    
+    function showExpenseTransactions(categoryName, allExpenses) {
+      const categoryExpenses = allExpenses.filter(t => (t.expenseTypeName || 'Uncategorized') === categoryName);
+      const sortedExpenses = categoryExpenses.sort((a, b) => {
+        const dateA = new Date(a.date || '');
+        const dateB = new Date(b.date || '');
+        return dateB - dateA;
+      });
+      
+      document.getElementById('expense-category-name').textContent = categoryName;
+      const listEl = document.getElementById('expense-transactions-list');
+      
+      if (listEl) {
+        listEl.innerHTML = sortedExpenses.map(t => {
+          const account = (allData.accounts || []).find(a => a.id === t.accountId);
+          const accountName = account ? accountDisplayName(account) : 'Unknown';
+          const amount = Math.abs(t.amount);
+          return `
+            <div class="p-3 bg-white border border-gray-200 rounded-lg">
+              <div class="flex justify-between items-start">
+                <div class="flex-1">
+                  <p class="font-semibold text-gray-900">${t.description}</p>
+                  <p class="text-sm text-gray-600 mt-1">
+                    ${new Date(t.date + 'T00:00:00').toLocaleDateString()} • ${accountName}
+                  </p>
+                </div>
+                <p class="font-bold text-lg text-orange-600 ml-4">$${formatNumber(amount)}</p>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+      
+      document.getElementById('expense-transactions-section').classList.remove('hidden');
+      document.getElementById('expense-transactions-section').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    
+    function renderIncomeAnalysis() {
+      const startDate = document.getElementById('income-filter-start-date')?.value || '';
+      const endDate = document.getElementById('income-filter-end-date')?.value || '';
+      const categoryFilter = document.getElementById('income-filter-category')?.value || '';
+      
+      let income = (allData.transactions || []).filter(t => t.type === 'INCOME');
+      
+      if (startDate) income = income.filter(t => t.date >= startDate);
+      if (endDate) income = income.filter(t => t.date <= endDate);
+      if (categoryFilter) income = income.filter(t => t.incomeCategory === categoryFilter);
+      
+      const total = income.reduce((sum, t) => sum + t.amount, 0);
+      const count = income.length;
+      const average = count > 0 ? total / count : 0;
+      
+      // Populate exchange filter
+      const categorySelect = document.getElementById('income-filter-category');
+      if (categorySelect) {
+        const currentValue = categorySelect.value;
+        const exchanges = allData.exchanges || [];
+        categorySelect.innerHTML = '<option value="">All Exchanges</option>';
+        exchanges.forEach(ex => {
+          const opt = document.createElement('option');
+          opt.value = ex.name;
+          opt.textContent = ex.name;
+          categorySelect.appendChild(opt);
+        });
+        categorySelect.value = currentValue;
+      }
+      
+      // Group by category (exchange)
+      const byCategory = {};
+      income.forEach(t => {
+        const cat = t.incomeCategory || 'Uncategorized';
+        if (!byCategory[cat]) {
+          byCategory[cat] = { name: cat, total: 0, count: 0 };
+        }
+        byCategory[cat].total += t.amount;
+        byCategory[cat].count += 1;
+      });
+      
+      const categories = Object.values(byCategory).sort((a, b) => b.total - a.total);
+      const topCategory = categories[0];
+      
+      // Update summary
+      document.getElementById('income-total').textContent = `$${formatNumber(total)}`;
+      document.getElementById('income-count').textContent = `${count} transaction${count !== 1 ? 's' : ''}`;
+      document.getElementById('income-average').textContent = `$${formatNumber(average)}`;
+      document.getElementById('income-top-category').textContent = topCategory ? topCategory.name : '-';
+      document.getElementById('income-top-amount').textContent = topCategory ? `$${formatNumber(topCategory.total)}` : '$0.00';
+      
+      // Render category list
+      const listEl = document.getElementById('income-by-category-list');
+      if (listEl) {
+        if (categories.length === 0) {
+          listEl.innerHTML = '<p class="text-gray-500 text-sm text-center py-4">No income found for the selected filters.</p>';
+        } else {
+          listEl.innerHTML = categories.map(cat => {
+            const percentage = total > 0 ? (cat.total / total * 100).toFixed(1) : 0;
+            return `
+              <div class="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors" data-category="${cat.name}">
+                <div class="flex justify-between items-center mb-2">
+                  <div>
+                    <p class="font-bold text-lg">${cat.name}</p>
+                    <p class="text-sm text-gray-600">${cat.count} transaction${cat.count !== 1 ? 's' : ''} • Click to view</p>
+                  </div>
+                  <div class="text-right">
+                    <p class="font-bold text-xl text-green-600">$${formatNumber(cat.total)}</p>
+                    <p class="text-sm text-gray-600">${percentage}% of total</p>
+                  </div>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                  <div class="bg-green-500 h-2 rounded-full" style="width: ${percentage}%"></div>
+                </div>
+              </div>
+            `;
+          }).join('');
+          
+          // Add click handlers to category cards
+          listEl.querySelectorAll('[data-category]').forEach(card => {
+            card.addEventListener('click', () => {
+              const categoryName = card.dataset.category;
+              showIncomeTransactions(categoryName, income);
+            });
+          });
+        }
+      }
+    }
+    
+    function showIncomeTransactions(categoryName, allIncome) {
+      const categoryIncome = allIncome.filter(t => (t.incomeCategory || 'Uncategorized') === categoryName);
+      const sortedIncome = categoryIncome.sort((a, b) => {
+        const dateA = new Date(a.date || '');
+        const dateB = new Date(b.date || '');
+        return dateB - dateA;
+      });
+      
+      document.getElementById('income-category-name').textContent = categoryName;
+      const listEl = document.getElementById('income-transactions-list');
+      
+      if (listEl) {
+        listEl.innerHTML = sortedIncome.map(t => {
+          const account = (allData.accounts || []).find(a => a.id === t.accountId);
+          const accountName = account ? accountDisplayName(account) : 'Unknown';
+          return `
+            <div class="p-3 bg-white border border-gray-200 rounded-lg">
+              <div class="flex justify-between items-start">
+                <div class="flex-1">
+                  <p class="font-semibold text-gray-900">${t.description}</p>
+                  <p class="text-sm text-gray-600 mt-1">
+                    ${new Date(t.date + 'T00:00:00').toLocaleDateString()} • ${accountName}
+                  </p>
+                </div>
+                <p class="font-bold text-lg text-green-600 ml-4">$${formatNumber(t.amount)}</p>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+      
+      document.getElementById('income-transactions-section').classList.remove('hidden');
+      document.getElementById('income-transactions-section').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    async function renderUsersList() {
+      const container = document.getElementById('users-list');
+      if (!container) return;
+      
+      try {
+        const rolesSnapshot = await getDocs(rolesCollection);
+        const users = rolesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        if (users.length === 0) {
+          container.innerHTML = '<p class="text-gray-500 text-sm">No users yet.</p>';
+          return;
+        }
+        
+        container.innerHTML = users.map(user => `
+          <div class="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+            <div>
+              <p class="font-semibold text-lg">${user.email}</p>
+              <p class="text-sm text-gray-600">Role: ${user.role === 'admin' ? 'Admin' : 'Regular User'}</p>
+              <p class="text-xs text-gray-500">Created: ${new Date(user.createdAt).toLocaleDateString()}</p>
+            </div>
+            <span class="px-3 py-1 rounded-full text-sm font-medium ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}">
+              ${user.role === 'admin' ? 'Admin' : 'User'}
+            </span>
+          </div>
+        `).join('');
+      } catch (error) {
+        console.error('Error loading users:', error);
+        container.innerHTML = '<p class="text-red-500 text-sm">Error loading users</p>';
+      }
+    }
+
+    function setupEventListeners() {
+      // RECLAIM ADMIN
+      document.getElementById('reclaim-admin-btn')?.addEventListener('click', async () => {
+        const confirmed = await openConfirm({
+          title: 'Reclaim Admin Access',
+          message: 'This will grant you admin privileges. Are you sure?',
+          buttons: [
+            { label: 'Cancel', value: false, className: 'px-4 py-2 rounded-md bg-gray-200 hover:bg-gray-300' },
+            { label: 'Reclaim Admin', value: true, className: 'px-4 py-2 rounded-md bg-yellow-500 text-white hover:bg-yellow-600' }
+          ]
+        });
+        
+        if (confirmed) {
+          try {
+            // Find and update the user's role document
+            const roleQuery = query(rolesCollection, where("userId", "==", userId));
+            const roleSnapshot = await getDocs(roleQuery);
+            
+            // Use setDoc with userId as document ID for security rules
+            await setDoc(doc(rolesCollection, userId), {
+              userId,
+              role: 'admin',
+              email: auth.currentUser?.email || '',
+              createdAt: roleSnapshot.empty ? new Date().toISOString() : roleSnapshot.docs[0].data().createdAt,
+              reclaimedAt: new Date().toISOString(),
+              reclaimed: true
+            });
+            
+            showNotification('Admin access reclaimed! Reloading...', false);
+            setTimeout(() => window.location.reload(), 1500);
+          } catch (error) {
+            console.error('Error reclaiming admin:', error);
+            showNotification('Failed to reclaim admin access: ' + error.message);
+          }
+        }
+      });
+      
+      // AUTH
+      ui.forms.loginForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = ui.forms.loginForm.querySelector('#login-email').value;
+        const password = ui.forms.loginForm.querySelector('#login-password').value;
+        try { await signInWithEmailAndPassword(auth, email, password); }
+        catch (error) { showNotification(error.message); }
+      });
+
+      ui.forms.signupForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = ui.forms.signupForm.querySelector('#signup-email').value;
+        const password = ui.forms.signupForm.querySelector('#signup-password').value;
+        try { await createUserWithEmailAndPassword(auth, email, password); }
+        catch (error) { showNotification(error.message); }
+      });
+
+      ui.buttons.logout?.addEventListener('click', () => {
+        sessionStorage.setItem(SKIP_ANON_KEY, '1');
+        signOut(auth);
+      });
+
+      ui.buttons.showSignup?.addEventListener('click', (e) => {
+        e.preventDefault();
+        ui.loginView?.classList.add('hidden');
+        ui.signupView?.classList.remove('hidden');
+      });
+      ui.buttons.showLogin?.addEventListener('click', (e) => {
+        e.preventDefault();
+        ui.signupView?.classList.add('hidden');
+        ui.loginView?.classList.remove('hidden');
+      });
+
+      // Tabs
+      ui.buttons.expenseTab?.addEventListener('click', () => setActiveTab('expense'));
+      ui.buttons.incomeTab?.addEventListener('click', () => {
+        setActiveTab('income');
+        populateSelect(ui.selects.incomeCategory, allData.exchanges);
+      });
+      ui.buttons.transactionTab?.addEventListener('click', () => {
+        setActiveTab('transaction');
+        populateAccountSelect(ui.transaction.fromSelect);
+        populateAccountSelect(ui.transaction.toSelect);
+        populateAccountSelect(ui.transaction.singleSelect);
+      });
+
+      // Transaction type changes
+      ui.transaction?.type?.addEventListener('change', (e) => {
+        const v = e.target.value;
+        populateAccountSelect(ui.transaction.fromSelect);
+        populateAccountSelect(ui.transaction.toSelect);
+        populateAccountSelect(ui.transaction.singleSelect);
+        toggleTransFields(v);
+      });
+
+      // ASSETS section — duplicate guards
+      ui.selects.assetType?.addEventListener('change', (e) => {
+        const v = e.target.value;
+        toggleField(ui.dynamicFields.assetBank,    ui.selects.assetBank,    v === 'Bank');
+        toggleField(ui.dynamicFields.assetBroker,  ui.selects.assetBroker,  v === 'Broker');
+        toggleField(ui.dynamicFields.assetEmployee,ui.selects.assetEmployee,v === 'Advance');
+      });
+
+      // LIABILITIES section
+      const creditDescInput = document.getElementById('liability-credit-description');
+      ui.selects.liabilityType?.addEventListener('change', (e) => {
+        const v = e.target.value;
+        toggleField(ui.dynamicFields.liabilityEmployee, ui.selects.liabilityEmployee, v === 'Payable');
+        toggleField(ui.dynamicFields.liabilityFounder,  ui.selects.liabilityFounder,  v === 'FounderCredit');
+        toggleField(ui.dynamicFields.liabilityCredit,   creditDescInput,              v === 'Credit');
+      });
+
+      // EXPENSES
+      ui.selects.expenseSource?.addEventListener('change', (e) => {
+        const v = e.target.value;
+        toggleField(ui.dynamicFields.expenseEmployee, ui.selects.expenseEmployee, v === 'employee');
+      });
+
+      async function handleAddCategory(form, collectionRef, existingItems) {
+        const input = form.querySelector('input');
+        const name = input.value.trim();
+        if(!name) return;
+        if((existingItems || []).some(item => item.name?.toLowerCase() === name.toLowerCase())) {
+          showNotification(`"${name}" already exists.`);
+          return;
+        }
+        await addDoc(collectionRef, { name, createdAt: new Date().toISOString() });
+        form.reset();
+      }
+
+      ui.forms.addExchange?.addEventListener('submit', (e) => { e.preventDefault(); handleAddCategory(e.target, exchangesCollection, allData.exchanges); });
+      ui.forms.addBank?.addEventListener('submit',     (e) => { e.preventDefault(); handleAddCategory(e.target, banksCollection,     allData.banks); });
+      ui.forms.addBroker?.addEventListener('submit',   (e) => { e.preventDefault(); handleAddCategory(e.target, brokersCollection,   allData.brokers); });
+      ui.forms.addFounder?.addEventListener('submit',  (e) => { e.preventDefault(); handleAddCategory(e.target, foundersCollection,  allData.founders); });
+      ui.forms.addEmployee?.addEventListener('submit', (e) => { e.preventDefault(); handleAddCategory(e.target, employeesCollection, allData.employees); });
+      ui.forms.addExpenseType?.addEventListener('submit', (e) => { e.preventDefault(); handleAddCategory(e.target, expenseTypesCollection, allData.expenseTypes); });
+
+      async function createAccountAndTransaction(accountData, amount) {
+        const batch = writeBatch(db);
+        const accountRef = doc(collection(db, `artifacts/${appId}/users/${userId}/accounts`));
+        batch.set(accountRef, accountData);
+
+        const transRef = doc(collection(db, `artifacts/${appId}/users/${userId}/transactions`));
+        const transData = {
+          accountId: accountRef.id,
+          amount: amount,
+          type: 'INITIAL',
+          date: new Date().toISOString().split('T')[0],
+          description: 'Initial Balance',
+          createdAt: new Date().toISOString()
+        };
+        batch.set(transRef, transData);
+        await batch.commit();
+      }
+
+      // Exchange balance — prevent duplicates per exchange name
+      ui.forms.addBalance?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = ui.selects.balanceName?.value;
+        const amount = parseFloat(ui.forms.addBalance.querySelector('#balance-amount')?.value);
+        if (!name || !amount) { showNotification("Please select an exchange and enter an amount."); return; }
+        const dup = (allData.accounts || []).some(a => a.type === 'ASSET' && a.subType === 'Exchange' && a.name === name);
+        if (dup) { showNotification(`Exchange "${name}" already exists.`); return; }
+        const accountData = { name, type: 'ASSET', subType: 'Exchange', createdAt: new Date().toISOString() };
+        await createAccountAndTransaction(accountData, amount);
+        ui.forms.addBalance.reset();
+        showNotification("Exchange balance added!", false);
+      });
+
+      // Add Asset — duplicate guards
+      ui.forms.addAsset?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const type = ui.selects.assetType?.value;
+        const amount = parseFloat(ui.forms.addAsset.querySelector('#asset-amount')?.value);
+        if (!type || !amount) { showNotification("Please select an asset type and enter an amount."); return; }
+        let data = { type: 'ASSET', subType: type, createdAt: new Date().toISOString() };
+        let isValid = true;
+        const accs = allData.accounts || [];
+
+        switch(type) {
+          case 'Bank': {
+            const name = ui.selects.assetBank?.value;
+            if(!name) { showNotification("Please select a bank."); isValid = false; break; }
+            const dup = accs.some(a => a.type === 'ASSET' && a.subType === 'Bank' && a.name === name);
+            if (dup) { showNotification(`Bank "${name}" already exists.`); isValid = false; break; }
+            data.name = name;
+            break;
+          }
+          case 'Broker': {
+            const name = ui.selects.assetBroker?.value;
+            if(!name) { showNotification("Please select a broker."); isValid = false; break; }
+            const dup = accs.some(a => a.type === 'ASSET' && a.subType === 'Broker' && a.name === name);
+            if (dup) { showNotification(`Broker "${name}" already exists.`); isValid = false; break; }
+            data.name = name;
+            break;
+          }
+          case 'Cash': {
+            const dup = accs.some(a => a.type === 'ASSET' && a.subType === 'Cash');
+            if (dup) { showNotification("Cash on Hand already exists."); isValid = false; break; }
+            data.name = 'Cash';
+            break;
+          }
+          case 'Advance': {
+            const employeeIdA = ui.selects.assetEmployee?.value;
+            if (!employeeIdA) { showNotification("Please select an employee."); isValid = false; break; }
+            const dup = accs.some(a => a.type === 'ASSET' && a.subType === 'Advance' && a.employeeId === employeeIdA);
+            if (dup) { showNotification("Advance for this employee already exists."); isValid = false; break; }
+            data.employeeId = employeeIdA;
+            data.employeeName = ui.selects.assetEmployee.options[ui.selects.assetEmployee.selectedIndex].text;
+            break;
+          }
+        }
+        if(!isValid) return;
+        await createAccountAndTransaction(data, amount);
+        ui.forms.addAsset.reset();
+        ui.selects.assetType?.dispatchEvent(new Event('change'));
+        showNotification("Asset added successfully!", false);
+      });
+
+      // Add Liability — duplicate guards
+      ui.forms.addLiability?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const type = ui.selects.liabilityType?.value;
+        const amount = parseFloat(ui.forms.addLiability.querySelector('#liability-amount')?.value);
+        if (!type || !amount) { showNotification("Please select a liability type and enter an amount."); return; }
+        let data = { type: 'LIABILITY', subType: type, createdAt: new Date().toISOString() };
+        let isValid = true;
+        const accs = allData.accounts || [];
+
+        switch(type) {
+          case 'Payable': {
+            const employeeIdL = ui.selects.liabilityEmployee?.value;
+            if (!employeeIdL) { showNotification("Please select an employee."); isValid = false; break; }
+            const dup = accs.some(a => a.type === 'LIABILITY' && a.subType === 'Payable' && a.employeeId === employeeIdL);
+            if (dup) { showNotification("Payable for this employee already exists."); isValid = false; break; }
+            data.employeeId = employeeIdL;
+            data.employeeName = ui.selects.liabilityEmployee.options[ui.selects.liabilityEmployee.selectedIndex].text;
+            break;
+          }
+          case 'FounderCredit': {
+            const founderId = ui.selects.liabilityFounder?.value;
+            if (!founderId) { showNotification("Please select a founder."); isValid = false; break; }
+            const dup = accs.some(a => a.type === 'LIABILITY' && a.subType === 'FounderCredit' && a.founderId === founderId);
+            if (dup) { showNotification("Founder credit for this founder already exists."); isValid = false; break; }
+            data.founderId = founderId;
+            data.founderName = ui.selects.liabilityFounder.options[ui.selects.liabilityFounder.selectedIndex].text;
+            break;
+          }
+          case 'Credit': {
+            const name = document.getElementById('liability-credit-description')?.value?.trim();
+            if(!name) { showNotification("Please enter a credit description."); isValid = false; break; }
+            const dup = accs.some(a => a.type === 'LIABILITY' && a.subType === 'Credit' && (a.name||'').toLowerCase() === name.toLowerCase());
+            if (dup) { showNotification(`Credit "${name}" already exists.`); isValid = false; break; }
+            data.name = name;
+            break;
+          }
+        }
+        if(!isValid) return;
+        await createAccountAndTransaction(data, amount);
+        ui.forms.addLiability.reset();
+        ui.selects.liabilityType?.dispatchEvent(new Event('change'));
+        showNotification("Liability added successfully!", false);
+      });
+
+      // Add Income
+      ui.forms.addIncome?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const description = document.getElementById('income-description')?.value;
+        const amount = parseFloat(document.getElementById('income-amount')?.value);
+        const date = document.getElementById('income-date')?.value;
+        const exchangeName = document.getElementById('income-category-select')?.value;
+
+        if (!description || !amount || !date || !exchangeName) {
+          showNotification("Please fill out all income fields.");
+          return;
+        }
+
+        try {
+          // Find or create the exchange account
+          let exchangeAccount = (allData.accounts || []).find(a => a.type === 'ASSET' && a.subType === 'Exchange' && a.name === exchangeName);
+          
+          if (!exchangeAccount) {
+            // Create new exchange account with initial transaction
+            const batch = writeBatch(db);
+            const newAccountRef = doc(collection(db, `artifacts/${appId}/users/${userId}/accounts`));
+            batch.set(newAccountRef, {
+              type: 'ASSET',
+              subType: 'Exchange',
+              name: exchangeName,
+              createdAt: new Date().toISOString()
+            });
+            
+            // Add income transaction
+            const transRef = doc(collection(db, `artifacts/${appId}/users/${userId}/transactions`));
+            batch.set(transRef, {
+              accountId: newAccountRef.id,
+              amount,
+              date,
+              type: 'INCOME',
+              description,
+              incomeCategory: exchangeName,
+              createdAt: new Date().toISOString()
+            });
+            
+            await batch.commit();
+          } else {
+            // Add income transaction to existing exchange account
+            const batch = writeBatch(db);
+            const transRef = doc(collection(db, `artifacts/${appId}/users/${userId}/transactions`));
+            batch.set(transRef, {
+              accountId: exchangeAccount.id,
+              amount,
+              date,
+              type: 'INCOME',
+              description,
+              incomeCategory: exchangeName,
+              createdAt: new Date().toISOString()
+            });
+            await batch.commit();
+          }
+          
+          ui.forms.addIncome.reset();
+          const incomeDate = document.getElementById('income-date');
+          if (incomeDate) incomeDate.valueAsDate = new Date();
+          showNotification("Income added successfully!", false);
+        } catch (error) {
+          console.error("Income transaction failed:", error);
+          showNotification(error.message, true);
+        }
+      });
+
+      // Add Expense
+      ui.forms.addExpense?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const description     = ui.forms.addExpense.querySelector('#expense-description')?.value;
+        const amount          = parseFloat(ui.forms.addExpense.querySelector('#expense-amount')?.value);
+        const date            = ui.inputs.expenseDate?.value;
+        const sourceAccountId = ui.selects.expenseSource?.value;
+        const expenseTypeId   = ui.selects.expenseType?.value;
+
+        if (!description || !amount || !date || !sourceAccountId || !expenseTypeId) {
+          showNotification("Please fill out all expense fields."); return;
+        }
+        const expenseTypeName = ui.selects.expenseType.options[ui.selects.expenseType.selectedIndex].text;
+
+        try {
+          if (sourceAccountId === 'employee') {
+            const employeeId = ui.selects.expenseEmployee?.value;
+            if (!employeeId) { showNotification("Please select the employee who paid."); return; }
+            const employeeName = ui.selects.expenseEmployee.options[ui.selects.expenseEmployee.selectedIndex].text;
+
+            await runTransaction(db, async (transaction) => {
+              const advanceAccount = (allData.accounts || []).find(a => a.subType === 'Advance' && a.employeeId === employeeId);
+              const advanceBalance = advanceAccount ? calculateBalances([advanceAccount], allData.transactions).assets[0].balance : 0;
+              const advanceUsed    = Math.min(amount, advanceBalance);
+              const payableCreated = amount - advanceUsed;
+
+              if (advanceUsed > 0) {
+                transaction.set(doc(collection(db, `artifacts/${appId}/users/${userId}/transactions`)), {
+                  accountId: advanceAccount.id, amount: -advanceUsed, date, type: 'EXPENSE',
+                  description, expenseTypeId, expenseTypeName, createdAt: new Date().toISOString()
+                });
+              }
+
+              if (payableCreated > 0) {
+                let payableAccount = (allData.accounts || []).find(a => a.subType === 'Payable' && a.employeeId === employeeId);
+                if (!payableAccount) {
+                  const newAccountRef = doc(collection(db, `artifacts/${appId}/users/${userId}/accounts`));
+                  transaction.set(newAccountRef, { type: 'LIABILITY', subType: 'Payable', employeeId, employeeName, createdAt: new Date().toISOString() });
+                  payableAccount = { id: newAccountRef.id };
+                }
+                transaction.set(doc(collection(db, `artifacts/${appId}/users/${userId}/transactions`)), {
+                  accountId: payableAccount.id, amount: payableCreated, date, type: 'EXPENSE_PAYABLE',
+                  description, expenseTypeId, expenseTypeName, createdBy: userId, createdAt: new Date().toISOString()
+                });
+              }
+            });
+          } else {
+            const batch = writeBatch(db);
+            const transRef = doc(collection(db, `artifacts/${appId}/users/${userId}/transactions`));
+            batch.set(transRef, {
+              accountId: sourceAccountId, amount: -amount, date, type: 'EXPENSE',
+              description, expenseTypeId, expenseTypeName, createdBy: userId, createdAt: new Date().toISOString()
+            });
+            await batch.commit();
+          }
+          ui.forms.addExpense.reset();
+          if (ui.inputs.expenseDate) ui.inputs.expenseDate.valueAsDate = new Date();
+          showNotification("Expense added successfully!", false);
+        } catch (error) {
+          console.error("Expense transaction failed: ", error);
+          showNotification(error.message, true);
+        }
+      });
+
+      // Add Transaction submit
+      ui.transaction?.form?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const type = ui.transaction.type?.value;
+        const desc = document.getElementById('transaction-description')?.value?.trim();
+        const amount = parseFloat(document.getElementById('transaction-amount')?.value);
+        const date = ui.transaction.dateInput?.value;
+
+        if (!type || !desc || !amount || !date) {
+          showNotification('Please fill out all transaction fields.');
+          return;
+        }
+
+        try {
+          if (type === 'TRANSFER') {
+            const fromId = ui.transaction.fromSelect?.value;
+            const toId   = ui.transaction.toSelect?.value;
+            if (!fromId || !toId || fromId === toId) {
+              showNotification('Please choose two different accounts for transfer.');
+              return;
+            }
+
+            const fromAccount = allData.accounts.find(a => a.id === fromId);
+            const toAccount = allData.accounts.find(a => a.id === toId);
+
+            if (!fromAccount || !toAccount) {
+                showNotification('Could not find one or both accounts for the transfer.');
+                return;
+            }
+
+            const batch = writeBatch(db);
+            const createdAt = new Date().toISOString();
+            const base = { date, description: desc, createdAt, type: 'TRANSFER' };
+
+            if (fromAccount.type === toAccount.type) {
+                batch.set(doc(collection(db, `artifacts/${appId}/users/${userId}/transactions`)), { ...base, accountId: fromId, amount: -amount });
+                batch.set(doc(collection(db, `artifacts/${appId}/users/${userId}/transactions`)), { ...base, accountId: toId,   amount:  amount });
+            } 
+            else if (fromAccount.type === 'ASSET' && toAccount.type === 'LIABILITY') {
+                batch.set(doc(collection(db, `artifacts/${appId}/users/${userId}/transactions`)), { ...base, accountId: fromId, amount: -amount });
+                batch.set(doc(collection(db, `artifacts/${appId}/users/${userId}/transactions`)), { ...base, accountId: toId,   amount: -amount });
+            }
+            else if (fromAccount.type === 'LIABILITY' && toAccount.type === 'ASSET') {
+                batch.set(doc(collection(db, `artifacts/${appId}/users/${userId}/transactions`)), { ...base, accountId: fromId, amount:  amount });
+                batch.set(doc(collection(db, `artifacts/${appId}/users/${userId}/transactions`)), { ...base, accountId: toId,   amount:  amount });
+            } else {
+                showNotification("This type of transfer between accounts is not supported.");
+                return;
+            }
+            
+            await batch.commit();
+            showNotification('Transfer recorded!', false);
+
+          } else if (type === 'DEPOSIT') {
+            const accId = ui.transaction.singleSelect?.value;
+            if (!accId) { showNotification('Please choose an account.'); return; }
+            const ref = doc(collection(db, `artifacts/${appId}/users/${userId}/transactions`));
+            await writeBatch(db).set(ref, { accountId: accId, amount: amount, date, type: 'DEPOSIT', description: desc, createdAt: new Date().toISOString() }).commit();
+            showNotification('Deposit recorded!', false);
+          } else if (type === 'WITHDRAWAL') {
+            const accId = ui.transaction.singleSelect?.value;
+            if (!accId) { showNotification('Please choose an account.'); return; }
+            const ref = doc(collection(db, `artifacts/${appId}/users/${userId}/transactions`));
+            await writeBatch(db).set(ref, { accountId: accId, amount: -amount, date, type: 'WITHDRAWAL', description: desc, createdAt: new Date().toISOString() }).commit();
+            showNotification('Withdrawal recorded!', false);
+          }
+
+          ui.transaction.form.reset();
+          ui.transaction.type.value = '';
+          toggleTransFields('');
+          if (ui.transaction.dateInput) ui.transaction.dateInput.valueAsDate = new Date();
+        } catch (err) {
+          console.error('Add transaction failed:', err);
+          showNotification(err.message || 'Transaction failed.');
+        }
+      });
+
+      // Modals
+      const manageLists = () => { ui.appContainer?.classList.add('hidden'); ui.modals.category?.classList.remove('hidden'); };
+      ui.buttons.manageCategories?.addEventListener('click', manageLists);
+      ui.buttons.addAsset?.addEventListener('click', manageLists);
+      ui.buttons.addLiability?.addEventListener('click', manageLists);
+
+      ui.buttons.closeCategoryModal?.addEventListener('click', () => { ui.modals.category?.classList.add('hidden'); ui.appContainer?.classList.remove('hidden'); });
+      ui.buttons.transactionHistory?.addEventListener('click', () => { ui.appContainer?.classList.add('hidden'); ui.modals.transaction?.classList.remove('hidden'); });
+      ui.buttons.closeTransactionModal?.addEventListener('click', () => { ui.modals.transaction?.classList.add('hidden'); ui.appContainer?.classList.remove('hidden'); });
+      
+      // Export modal
+      ui.buttons.export?.addEventListener('click', () => ui.modals.export?.classList.remove('hidden'));
+      ui.buttons.closeExportModal?.addEventListener('click', () => ui.modals.export?.classList.add('hidden'));
+      
+      // Expenses Analysis modal
+      ui.buttons.expensesAnalysis?.addEventListener('click', () => {
+        ui.appContainer?.classList.add('hidden');
+        ui.modals.expensesAnalysis?.classList.remove('hidden');
+        renderExpensesAnalysis();
+      });
+      ui.buttons.closeExpensesAnalysis?.addEventListener('click', () => {
+        ui.modals.expensesAnalysis?.classList.add('hidden');
+        ui.appContainer?.classList.remove('hidden');
+      });
+      
+      // Income Analysis modal
+      ui.buttons.incomeAnalysis?.addEventListener('click', () => {
+        ui.appContainer?.classList.add('hidden');
+        ui.modals.incomeAnalysis?.classList.remove('hidden');
+        renderIncomeAnalysis();
+      });
+      ui.buttons.closeIncomeAnalysis?.addEventListener('click', () => {
+        ui.modals.incomeAnalysis?.classList.add('hidden');
+        ui.appContainer?.classList.remove('hidden');
+      });
+      
+      // User Management modal close button
+      document.getElementById('close-user-management')?.addEventListener('click', () => {
+        document.getElementById('user-management-overlay')?.classList.add('hidden');
+      });
+      
+      // Create new user form
+      document.getElementById('create-user-form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('new-user-email')?.value;
+        const password = document.getElementById('new-user-password')?.value;
+        
+        if (!email || !password) {
+          showNotification('Please fill in all fields');
+          return;
+        }
+        
+        try {
+          // Create user account
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          const newUserId = userCredential.user.uid;
+          
+          // Add user role as 'user'
+          await addDoc(rolesCollection, {
+            userId: newUserId,
+            role: 'user',
+            email: email,
+            createdAt: new Date().toISOString(),
+            createdBy: userId
+          });
+          
+          showNotification(`User ${email} created successfully!`, false);
+          document.getElementById('create-user-form')?.reset();
+          await renderUsersList();
+          
+          // Sign back in as admin
+          await signOut(auth);
+          window.location.reload();
+        } catch (error) {
+          console.error('Error creating user:', error);
+          showNotification(`Error: ${error.message}`);
+        }
+      });
+
+      ui.inputs.historicalDate?.addEventListener('change', masterRender);
+      
+      // Monthly Income card click - open Income Analysis with month filter
+      document.getElementById('monthly-income-card')?.addEventListener('click', () => {
+        const endDate = ui.inputs.historicalDate?.value || new Date().toISOString().split('T')[0];
+        const parts = endDate.split('-');
+        const year = parseInt(parts[0]);
+        const month = parseInt(parts[1]);
+        
+        const firstDayOfMonth = `${year}-${String(month).padStart(2, '0')}-01`;
+        const lastDayOfMonth = new Date(year, month, 0).toISOString().split('T')[0];
+        
+        document.getElementById('income-filter-start-date').value = firstDayOfMonth;
+        document.getElementById('income-filter-end-date').value = lastDayOfMonth;
+        
+        ui.appContainer?.classList.add('hidden');
+        ui.modals.incomeAnalysis?.classList.remove('hidden');
+        renderIncomeAnalysis();
+      });
+      
+      // Monthly Expenses card click - open Expenses Analysis with month filter
+      document.getElementById('monthly-expenses-card')?.addEventListener('click', () => {
+        const endDate = ui.inputs.historicalDate?.value || new Date().toISOString().split('T')[0];
+        const parts = endDate.split('-');
+        const year = parseInt(parts[0]);
+        const month = parseInt(parts[1]);
+        
+        const firstDayOfMonth = `${year}-${String(month).padStart(2, '0')}-01`;
+        const lastDayOfMonth = new Date(year, month, 0).toISOString().split('T')[0];
+        
+        document.getElementById('expense-filter-start-date').value = firstDayOfMonth;
+        document.getElementById('expense-filter-end-date').value = lastDayOfMonth;
+        
+        ui.appContainer?.classList.add('hidden');
+        ui.modals.expensesAnalysis?.classList.remove('hidden');
+        renderExpensesAnalysis();
+      });
+      
+      const applyHistoryFilters = () => {
+          const filters = {
+              startDate: ui.historyFilters.startDate.value,
+              endDate: ui.historyFilters.endDate.value,
+              accountId: ui.historyFilters.account.value,
+              description: ui.historyFilters.description.value
+          };
+          renderTransactionHistory(allData.transactions, allData.accounts, filters);
+      };
+      
+      ui.historyFilters.startDate.addEventListener('change', applyHistoryFilters);
+      ui.historyFilters.endDate.addEventListener('change', applyHistoryFilters);
+      ui.historyFilters.account.addEventListener('change', applyHistoryFilters);
+      ui.historyFilters.description.addEventListener('input', applyHistoryFilters);
+      
+      // Export CSV
+      document.getElementById('export-csv-btn')?.addEventListener('click', () => {
+        const transactions = allData.transactions || [];
+        if (transactions.length === 0) {
+          showNotification('No transactions to export.');
+          return;
+        }
+        
+        const headers = ['Date', 'Type', 'Description', 'Amount', 'Account', 'Category'];
+        const rows = transactions.map(t => {
+          const account = (allData.accounts || []).find(a => a.id === t.accountId);
+          const accountName = account ? accountDisplayName(account) : 'Unknown';
+          const category = t.expenseTypeName || t.incomeCategory || t.type;
+          return [
+            t.date,
+            t.type,
+            t.description || '',
+            t.amount,
+            accountName,
+            category
+          ];
+        });
+        
+        const csvContent = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `transactions_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showNotification('CSV exported successfully!', false);
+        ui.modals.export?.classList.add('hidden');
+      });
+      
+      // Export PDF Report
+      document.getElementById('export-report-btn')?.addEventListener('click', () => {
+        const calculatedBalances = calculateBalances(allData.accounts, allData.transactions);
+        const assetTotal = calculatedBalances.assets.reduce((sum, a) => sum + a.balance, 0);
+        const liabilityTotal = calculatedBalances.liabilities.reduce((sum, l) => sum + l.balance, 0);
+        const netWorth = assetTotal - liabilityTotal;
+        
+        const now = new Date();
+        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+        const monthlyIncome = (allData.transactions || [])
+          .filter(t => t.type === 'INCOME' && t.date >= firstDayOfMonth)
+          .reduce((sum, t) => sum + t.amount, 0);
+        const monthlyExpenses = (allData.transactions || [])
+          .filter(t => (t.type === 'EXPENSE' || t.type === 'EXPENSE_PAYABLE') && t.date >= firstDayOfMonth)
+          .reduce((sum, t) => sum + (t.type === 'EXPENSE_PAYABLE' ? t.amount : -t.amount), 0);
+        
+        const win = window.open('', '_blank');
+        win.document.write(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Financial Report</title>
+            <style>
+              body { font-family: Arial, sans-serif; padding: 40px; }
+              h1 { color: #4f46e5; border-bottom: 3px solid #4f46e5; padding-bottom: 10px; }
+              h2 { color: #333; margin-top: 30px; }
+              table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+              th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+              th { background-color: #f3f4f6; font-weight: bold; }
+              .metric { display: inline-block; margin: 20px 40px 20px 0; }
+              .metric-label { font-size: 14px; color: #666; }
+              .metric-value { font-size: 28px; font-weight: bold; }
+              .positive { color: #10b981; }
+              .negative { color: #ef4444; }
+              .neutral { color: #4f46e5; }
+            </style>
+          </head>
+          <body>
+            <h1>Financial Report</h1>
+            <p>Generated on ${new Date().toLocaleDateString()}</p>
+            
+            <h2>Balance Sheet</h2>
+            <div class="metric">
+              <div class="metric-label">Total Assets</div>
+              <div class="metric-value positive">$${formatNumber(assetTotal)}</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Total Liabilities</div>
+              <div class="metric-value negative">$${formatNumber(liabilityTotal)}</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Net Worth</div>
+              <div class="metric-value neutral">$${formatNumber(netWorth)}</div>
+            </div>
+            
+            <h2>Monthly Summary (${now.toLocaleString('default', { month: 'long', year: 'numeric' })})</h2>
+            <div class="metric">
+              <div class="metric-label">Income</div>
+              <div class="metric-value positive">$${formatNumber(monthlyIncome)}</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Expenses</div>
+              <div class="metric-value negative">$${formatNumber(monthlyExpenses)}</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Net Profit</div>
+              <div class="metric-value ${monthlyIncome - monthlyExpenses >= 0 ? 'positive' : 'negative'}">$${formatNumber(monthlyIncome - monthlyExpenses)}</div>
+            </div>
+            
+            <h2>Assets</h2>
+            <table>
+              <thead><tr><th>Account</th><th>Balance</th></tr></thead>
+              <tbody>
+                ${calculatedBalances.assets.map(a => `<tr><td>${a.displayName}</td><td>$${formatNumber(a.balance)}</td></tr>`).join('')}
+              </tbody>
+            </table>
+            
+            <h2>Liabilities</h2>
+            <table>
+              <thead><tr><th>Account</th><th>Balance</th></tr></thead>
+              <tbody>
+                ${calculatedBalances.liabilities.map(l => `<tr><td>${l.displayName}</td><td>$${formatNumber(l.balance)}</td></tr>`).join('')}
+              </tbody>
+            </table>
+            
+            <button onclick="window.print()" style="margin-top: 30px; padding: 12px 24px; background: #4f46e5; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px;">Print Report</button>
+          </body>
+          </html>
+        `);
+        win.document.close();
+        ui.modals.export?.classList.add('hidden');
+        showNotification('Report generated! Use Print to save as PDF.', false);
+      });
+      
+      // Edit Transaction
+      document.getElementById('edit-transaction-form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('edit-transaction-id').value;
+        const description = document.getElementById('edit-description').value;
+        const amount = parseFloat(document.getElementById('edit-amount').value);
+        const date = document.getElementById('edit-date').value;
+        
+        if (!id || !description || !amount || !date) {
+          showNotification('Please fill out all fields.');
+          return;
+        }
+        
+        try {
+          const transaction = (allData.transactions || []).find(t => t.id === id);
+          if (!transaction) {
+            showNotification('Transaction not found.');
+            return;
+          }
+          
+          const newAmount = transaction.amount < 0 ? -amount : amount;
+          await runTransaction(db, async (firestoreTransaction) => {
+            const transRef = doc(db, `artifacts/${appId}/users/${userId}/transactions`, id);
+            firestoreTransaction.update(transRef, {
+              description,
+              amount: newAmount,
+              date
+            });
+          });
+          
+          document.getElementById('edit-transaction-overlay').classList.add('hidden');
+          showNotification('Transaction updated successfully!', false);
+        } catch (error) {
+          console.error('Edit transaction failed:', error);
+          showNotification(error.message || 'Failed to update transaction.', true);
+        }
+      });
+      
+      document.getElementById('cancel-edit-btn')?.addEventListener('click', () => {
+        document.getElementById('edit-transaction-overlay').classList.add('hidden');
+      });
+      
+      document.getElementById('close-edit-transaction-modal')?.addEventListener('click', () => {
+        document.getElementById('edit-transaction-overlay').classList.add('hidden');
+      });
+      
+      // Expenses Analysis filters
+      document.getElementById('expense-filter-start-date')?.addEventListener('change', renderExpensesAnalysis);
+      document.getElementById('expense-filter-end-date')?.addEventListener('change', renderExpensesAnalysis);
+      document.getElementById('expense-filter-category')?.addEventListener('change', renderExpensesAnalysis);
+      document.getElementById('expense-filter-reset')?.addEventListener('click', () => {
+        document.getElementById('expense-filter-start-date').value = '';
+        document.getElementById('expense-filter-end-date').value = '';
+        document.getElementById('expense-filter-category').value = '';
+        renderExpensesAnalysis();
+      });
+      
+      // Income Analysis filters
+      document.getElementById('income-filter-start-date')?.addEventListener('change', renderIncomeAnalysis);
+      document.getElementById('income-filter-end-date')?.addEventListener('change', renderIncomeAnalysis);
+      document.getElementById('income-filter-category')?.addEventListener('change', renderIncomeAnalysis);
+      document.getElementById('income-filter-reset')?.addEventListener('click', () => {
+        document.getElementById('income-filter-start-date').value = '';
+        document.getElementById('income-filter-end-date').value = '';
+        document.getElementById('income-filter-category').value = '';
+        renderIncomeAnalysis();
+      });
+      
+      // Close transaction detail sections
+      document.getElementById('close-expense-transactions')?.addEventListener('click', () => {
+        document.getElementById('expense-transactions-section').classList.add('hidden');
+      });
+      
+      document.getElementById('close-income-transactions')?.addEventListener('click', () => {
+        document.getElementById('income-transactions-section').classList.add('hidden');
+      });
+    }
+
+    window.onload = () => {
+      ui = {
+        loadingOverlay: document.getElementById('loading-overlay'),
+        appContainer: document.getElementById('app-container'),
+        authOverlay: document.getElementById('auth-overlay'),
+        loginView: document.getElementById('login-view'),
+        signupView: document.getElementById('signup-view'),
+        userInfo: document.getElementById('user-info'),
+        totalBalance: document.getElementById('total-balance'),
+        totalAssets: document.getElementById('total-assets'),
+        totalLiabilities: document.getElementById('total-liabilities'),
+        monthlyExpenses: document.getElementById('monthly-expenses'),
+        monthlyIncome: document.getElementById('monthly-income'),
+        lists: {
+          assets: document.getElementById('assets-list'),
+          liabilities: document.getElementById('liabilities-list'),
+          employees: document.getElementById('employees-list'),
+          exchanges: document.getElementById('exchanges-list'),
+          banks: document.getElementById('banks-list'),
+          brokers: document.getElementById('brokers-list'),
+          founders: document.getElementById('founders-list'),
+          expenseTypes: document.getElementById('expense-types-list'),
+          expenseBreakdown: document.getElementById('expense-breakdown-list'),
+          transactionHistory: document.getElementById('transaction-history-list'),
+        },
+        forms: {
+          loginForm: document.getElementById('login-form'),
+          signupForm: document.getElementById('signup-form'),
+          addBalance: document.getElementById('add-balance-form'),
+          addAsset: document.getElementById('add-asset-form'),
+          addLiability: document.getElementById('add-liability-form'),
+          addExpense: document.getElementById('add-expense-form'),
+          addIncome: document.getElementById('add-income-form'),
+          addEmployee: document.getElementById('add-employee-form'),
+          addExchange: document.getElementById('add-exchange-form'),
+          addBank: document.getElementById('add-bank-form'),
+          addBroker: document.getElementById('add-broker-form'),
+          addFounder: document.getElementById('add-founder-form'),
+          addExpenseType: document.getElementById('add-expense-type-form'),
+        },
+        selects: {
+          balanceName: document.getElementById('balance-name-select'),
+          assetType: document.getElementById('asset-type'),
+          assetBank: document.getElementById('asset-bank-select'),
+          assetBroker: document.getElementById('asset-broker-select'),
+          assetEmployee: document.getElementById('asset-employee-select'),
+          liabilityType: document.getElementById('liability-type'),
+          liabilityEmployee: document.getElementById('liability-employee-select'),
+          liabilityFounder: document.getElementById('liability-founder-select'),
+          expenseSource: document.getElementById('expense-source'),
+          expenseType: document.getElementById('expense-type-select'),
+          expenseEmployee: document.getElementById('expense-employee-select'),
+          incomeCategory: document.getElementById('income-category-select'),
+        },
+        dynamicFields: {
+          assetBank: document.getElementById('asset-bank-field'),
+          assetBroker: document.getElementById('asset-broker-field'),
+          assetEmployee: document.getElementById('asset-employee-field'),
+          liabilityEmployee: document.getElementById('liability-employee-field'),
+          liabilityFounder: document.getElementById('liability-founder-field'),
+          liabilityCredit: document.getElementById('liability-credit-field'),
+          expenseEmployee: document.getElementById('expense-employee-field'),
+        },
+        buttons: {
+          manageCategories: document.getElementById('manage-categories-btn'),
+          transactionHistory: document.getElementById('transaction-history-btn'),
+          closeCategoryModal: document.getElementById('close-category-modal-btn'),
+          closeTransactionModal: document.getElementById('close-transaction-modal-btn'),
+          logout: document.getElementById('logout-btn'),
+          showSignup: document.getElementById('show-signup'),
+          showLogin: document.getElementById('show-login'),
+          expenseTab: document.getElementById('expense-tab-btn'),
+          incomeTab: document.getElementById('income-tab-btn'),
+          transactionTab: document.getElementById('transaction-tab-btn'),
+          addAsset: document.getElementById('add-asset-btn'),
+          addLiability: document.getElementById('add-liability-btn'),
+          export: document.getElementById('export-btn'),
+          expensesAnalysis: document.getElementById('expenses-analysis-btn'),
+          incomeAnalysis: document.getElementById('income-analysis-btn'),
+          closeExportModal: document.getElementById('close-export-modal'),
+          closeExpensesAnalysis: document.getElementById('close-expenses-analysis-modal'),
+          closeIncomeAnalysis: document.getElementById('close-income-analysis-modal'),
+        },
+        containers: {
+          expenseForm: document.getElementById('expense-form-container'),
+          incomeForm: document.getElementById('income-form-container'),
+          transactionForm: document.getElementById('transaction-form-container'),
+        },
+        transaction: {
+          form: document.getElementById('add-transaction-form'),
+          type: document.getElementById('transaction-type'),
+          dateInput: document.getElementById('transaction-date'),
+          fromField: document.getElementById('trans-from-account-field'),
+          toField: document.getElementById('trans-to-account-field'),
+          singleField: document.getElementById('trans-single-account-field'),
+          fromSelect: document.getElementById('trans-from-account-select'),
+          toSelect: document.getElementById('trans-to-account-select'),
+          singleSelect: document.getElementById('trans-single-account-select'),
+        },
+        modals: {
+          category: document.getElementById('category-management-overlay'),
+          transaction: document.getElementById('transaction-history-overlay'),
+          export: document.getElementById('export-overlay'),
+          expensesAnalysis: document.getElementById('expenses-analysis-overlay'),
+          incomeAnalysis: document.getElementById('income-analysis-overlay'),
+        },
+        inputs: {
+          expenseDate: document.getElementById('expense-date'),
+          historicalDate: document.getElementById('historical-date-picker'),
+        },
+        historyFilters: {
+            startDate: document.getElementById('filter-start-date'),
+            endDate: document.getElementById('filter-end-date'),
+            account: document.getElementById('filter-account'),
+            description: document.getElementById('filter-description')
+        }
+      };
+
+      if (ui.inputs.expenseDate) ui.inputs.expenseDate.valueAsDate = new Date();
+      if (ui.inputs.historicalDate) ui.inputs.historicalDate.valueAsDate = new Date();
+      if (ui.transaction.dateInput) ui.transaction.dateInput.valueAsDate = new Date();
+
+      initializeAppAndAuth();
+      setupEventListeners();
+
+      // Initial UI state
+      setActiveTab('expense');
+      toggleTransFields('');
+      ui.selects.assetType?.dispatchEvent(new Event('change'));
+      ui.selects.liabilityType?.dispatchEvent(new Event('change'));
+      ui.selects.expenseSource?.dispatchEvent(new Event('change'));
+    };
+  </script>
+</body>
+</html>
